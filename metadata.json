@@ -1,0 +1,6 @@
+{
+  "name": "Remix SafeAir Saathi",
+  "description": "GenAI-powered winter smog and urban air pollution assistant offering personalized low-emission daily routines, indoor air quality hacks, sustainable alternatives, and direct impact insights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

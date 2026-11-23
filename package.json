@@ -1,0 +1,85 @@
+{
+  "name": "safeair-saathi",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Bilingual (English/Hindi) GenAI assistant for winter smog and urban air pollution with live AQI insights, tailored action plans, and impact estimates.",
+  "license": "MIT",
+  "author": "SafeAir Saathi Contributors",
+  "homepage": "https://safe-air-lilac.vercel.app/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/safeair-saathi/safeair-saathi.git"
+  },
+  "keywords": [
+    "air-quality",
+    "aqi",
+    "winter-smog",
+    "gemini",
+    "react",
+    "vite",
+    "typescript",
+    "bilingual",
+    "hindi",
+    "sustainability"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build": "vite build && npm run build:server",
+    "start": "node dist-server/server.js --prod",
+    "preview": "vite preview",
+    "clean": "rm -rf dist dist-server server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@google/genai": "3.6.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@tailwindcss/vite": "4.3.5",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "8.0.0",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.13",
+    "@types/express": "4.17.25",
+    "@types/jest-axe": "3.5.9",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "@vitest/coverage-v8": "5.1.1",
+    "dotenv": "17.4.2",
+    "eslint": "10.15.0",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-sonarjs": "4.2.2",
+    "eslint-plugin-unicorn": "80.0.0",
+    "express": "4.22.3",
+    "jest-axe": "11.0.0",
+    "jsdom": "31.0.1",
+    "prettier": "3.10.1",
+    "tailwindcss": "4.3.5",
+    "tsx": "4.23.15",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.73.0",
+    "vite": "8.3.8",
+    "vitest": "5.1.1"
+  }
+}
