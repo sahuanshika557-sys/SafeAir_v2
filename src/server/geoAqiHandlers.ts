@@ -14,7 +14,12 @@ import {
   createLinkedTimeoutController,
 } from '../utils/network.js';
 import { sanitizeTextInput, validateCityQuery } from '../utils/validation.js';
-import { getQueryParam, sendJson, type ServerApiRequest, type ServerApiResponse } from './httpUtils.js';
+import {
+  getQueryParam,
+  sendJson,
+  type ServerApiRequest,
+  type ServerApiResponse,
+} from './httpUtils.js';
 import {
   aqiCache,
   geocodeCache,

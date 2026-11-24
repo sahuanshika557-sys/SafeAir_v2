@@ -31,7 +31,8 @@ export function sanitizeTextInput(raw: string, maxLength: number = MAX_FREE_TEXT
   let withoutControlChars = '';
   for (let i = 0; i < raw.length; i += 1) {
     const code = raw.charCodeAt(i);
-    withoutControlChars += code < ASCII_SPACE_CODE || code === ASCII_DEL_CODE ? ' ' : (raw[i] ?? '');
+    withoutControlChars +=
+      code < ASCII_SPACE_CODE || code === ASCII_DEL_CODE ? ' ' : (raw[i] ?? '');
   }
   const withoutTags = withoutControlChars.replace(/[<>]/g, '');
   const withoutDelimiterSpoofing = withoutTags.replace(/<<<|>>>/g, '');
@@ -244,9 +245,6 @@ export const actionPlanSchema = z.object({
   worstTimeWindow: z.string().min(1).max(MAX_TIME_WINDOW_LENGTH),
   dailyRoutine: z.array(recommendationItemSchema).min(1).max(MAX_PLAN_ITEMS_PER_SECTION),
   indoorAirHacks: z.array(recommendationItemSchema).min(1).max(MAX_PLAN_ITEMS_PER_SECTION),
-  sustainableAlternatives: z
-    .array(recommendationItemSchema)
-    .min(1)
-    .max(MAX_PLAN_ITEMS_PER_SECTION),
+  sustainableAlternatives: z.array(recommendationItemSchema).min(1).max(MAX_PLAN_ITEMS_PER_SECTION),
   healthProtection: z.array(recommendationItemSchema).min(1).max(MAX_PLAN_ITEMS_PER_SECTION),
 });

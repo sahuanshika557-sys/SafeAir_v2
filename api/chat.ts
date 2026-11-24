@@ -4,6 +4,7 @@ import {
   type ServerApiResponse,
 } from '../src/server/apiHandlers.js';
 
+/** Vercel serverless function execution timeout configuration. */
 export const config = {
   maxDuration: 60,
 };

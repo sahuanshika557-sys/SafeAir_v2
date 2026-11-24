@@ -151,10 +151,12 @@ async function handleModelAttemptError(
   params: RetryAttemptParams,
 ): Promise<'retry' | 'next_model'> {
   const { category, httpStatus, retryable } = classifyUpstreamError(err);
-  console.error(
-    `[SafeAir Saathi] ${params.routeLabel} ${params.attemptLabel} attempt failed:`,
-    { model, attempt: attempt + 1, category, status: httpStatus },
-  );
+  console.error(`[SafeAir Saathi] ${params.routeLabel} ${params.attemptLabel} attempt failed:`, {
+    model,
+    attempt: attempt + 1,
+    category,
+    status: httpStatus,
+  });
   if (category === 'bad_request' || isDefinitiveKeyFailure(err)) {
     throw err;
   }

@@ -27,10 +27,7 @@ export interface ReverseGeocodeCachedValue {
 }
 
 /** Bounded server-side TTL cache for Open-Meteo geocoding responses. */
-export const geocodeCache = new TtlCache<unknown>(
-  AQI_CACHE_TTL_MS,
-  SERVER_PROXY_CACHE_MAX_ENTRIES,
-);
+export const geocodeCache = new TtlCache<unknown>(AQI_CACHE_TTL_MS, SERVER_PROXY_CACHE_MAX_ENTRIES);
 
 /** Bounded server-side TTL cache for Open-Meteo air quality responses. */
 export const aqiCache = new TtlCache<unknown>(AQI_CACHE_TTL_MS, SERVER_PROXY_CACHE_MAX_ENTRIES);
@@ -99,8 +96,7 @@ export async function proxyOpenMeteoJson(
     const upstream = await fetch(targetUrl, { signal: controller.signal });
     if (!upstream.ok) {
       const status =
-        upstream.status >= UPSTREAM_ERROR_STATUS_MIN &&
-        upstream.status <= UPSTREAM_ERROR_STATUS_MAX
+        upstream.status >= UPSTREAM_ERROR_STATUS_MIN && upstream.status <= UPSTREAM_ERROR_STATUS_MAX
           ? upstream.status
           : HTTP_BAD_GATEWAY;
       console.error(`[SafeAir Saathi] ${routeLabel} upstream status:`, { status });

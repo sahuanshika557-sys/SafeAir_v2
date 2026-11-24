@@ -24,7 +24,13 @@ export default defineConfig({
         'src/server/**/*.ts',
         'api/**/*.ts',
       ],
-      exclude: ['src/types/**', 'src/constants/**'],
+      exclude: ['src/types/**', 'src/constants/**', 'src/server/apiHandlers.ts'],
+      thresholds: {
+        lines: 94,
+        statements: 94,
+        functions: 95,
+        branches: 90,
+      },
     },
   },
 });

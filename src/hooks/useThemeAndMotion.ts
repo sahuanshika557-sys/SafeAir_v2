@@ -30,12 +30,22 @@ function prefersReducedMotionSetting(): boolean {
     : false;
 }
 
-function toggleRootClass(className: string, active: boolean): void {
-  if (active) {
-    document.documentElement.classList.add(className);
-  } else {
-    document.documentElement.classList.remove(className);
-  }
+function useReducedMotionPreference(): boolean {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(() =>
+    prefersReducedMotionSetting(),
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = (event: MediaQueryListEvent): void => setPrefersReducedMotion(event.matches);
+    mq.addEventListener?.('change', onChange);
+    return (): void => mq.removeEventListener?.('change', onChange);
+  }, []);
+
+  return prefersReducedMotion;
 }
 
 /**
@@ -48,9 +58,7 @@ export function useThemeAndMotion(): UseThemeAndMotionReturn {
   const [animationsPaused, setAnimationsPaused] = useState<boolean>(() =>
     loadAnimationsPausedPreference(),
   );
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(() =>
-    prefersReducedMotionSetting(),
-  );
+  const prefersReducedMotion = useReducedMotionPreference();
   const effectiveAnimationsPaused = animationsPaused || prefersReducedMotion;
 
   useEffect(() => {
@@ -58,18 +66,13 @@ export function useThemeAndMotion(): UseThemeAndMotionReturn {
     document.title = TRANSLATIONS[language].pageTitle;
   }, [language]);
 
-  useEffect(() => toggleRootClass('dark', isDark), [isDark]);
-  useEffect(() => toggleRootClass('animations-paused', effectiveAnimationsPaused), [effectiveAnimationsPaused]);
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return;
-    }
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = (event: MediaQueryListEvent): void => setPrefersReducedMotion(event.matches);
-    mq.addEventListener?.('change', onChange);
-    return (): void => mq.removeEventListener?.('change', onChange);
-  }, []);
+    document.documentElement.classList.toggle('animations-paused', effectiveAnimationsPaused);
+  }, [effectiveAnimationsPaused]);
 
   const toggleLanguage = useCallback((): void => {
     setLanguage((prev) => {
@@ -89,5 +92,13 @@ export function useThemeAndMotion(): UseThemeAndMotionReturn {
     });
   }, []);
 
-  return { language, isDark, animationsPaused, effectiveAnimationsPaused, toggleLanguage, toggleTheme, toggleAnimations };
+  return {
+    language,
+    isDark,
+    animationsPaused,
+    effectiveAnimationsPaused,
+    toggleLanguage,
+    toggleTheme,
+    toggleAnimations,
+  };
 }

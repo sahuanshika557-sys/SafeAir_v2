@@ -9,6 +9,7 @@ import { useSpeechSynthesis } from '../../src/hooks/useSpeechSynthesis.js';
 import { clearAqiCache } from '../../src/services/airQuality.js';
 import { resetGeminiClientState } from '../../src/services/gemini.js';
 import { clearReverseGeocodeCache } from '../../src/services/geocoding.js';
+import type { LocationData } from '../../src/types/index.js';
 import { createManualAirQualityReading } from '../../src/utils/aqi.js';
 import {
   loadAnimationsPausedPreference,
@@ -600,6 +601,492 @@ describe('Custom hooks', () => {
     });
     expect(planHi.current.error).toContain('AI योजना तैयार नहीं हो सकी');
     expect(planHi.current.plan?.isFallback).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('covers useProfileForm household toggle & validation, useThemeAndMotion media listeners, and helper edge fallbacks', async () => {
+    const { useProfileForm } = await import('../../src/hooks/useProfileForm.js');
+    const { useThemeAndMotion } = await import('../../src/hooks/useThemeAndMotion.js');
+    const { resolveAqiErrorMessage, resolveCitySearchErrorMessage } =
+      await import('../../src/hooks/airQualityHelpers.js');
+    const { TRANSLATIONS } = await import('../../src/i18n/translations.js');
+    const { useFollowUpChat } = await import('../../src/hooks/useFollowUpChat.js');
+
+    expect(resolveAqiErrorMessage('bad', 'en')).toContain('Unable to fetch');
+    expect(resolveAqiErrorMessage('bad', 'hi')).toContain('वायु गुणवत्ता डेटा');
+    expect(resolveCitySearchErrorMessage('bad', 'en')).toBe('City search failed.');
+    expect(resolveCitySearchErrorMessage('bad', 'hi')).toContain('शहर खोज विफल');
+
+    // useProfileForm: toggleHousehold add & remove, invalid submit, valid submit
+    const onChange = vi.fn();
+    const onSubmit = vi.fn();
+    const { result: formHook, rerender: rerenderForm } = renderHook(
+      ({ profile }) => useProfileForm({ language: 'en', profile, onChange, onSubmit }),
+      { initialProps: { profile: DEFAULT_PROFILE } },
+    );
+
+    act(() => {
+      formHook.current.toggleHousehold('elderly');
+    });
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ household: expect.arrayContaining(['elderly']) }),
+    );
+    rerenderForm({ profile: { ...DEFAULT_PROFILE, household: ['elderly'] } });
+    act(() => {
+      formHook.current.toggleHousehold('elderly');
+    });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ household: [] }));
+
+    rerenderForm({ profile: { ...DEFAULT_PROFILE, notes: 'x'.repeat(505) } });
+    act(() => {
+      formHook.current.handleSubmit({ preventDefault: vi.fn() } as never);
+    });
+    expect(formHook.current.errors.notes).toBeTruthy();
+
+    // useThemeAndMotion: matchMedia listeners, theme toggle, language toggle
+    let reducedListener: ((e: MediaQueryListEvent) => void) | undefined;
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query.includes('dark'),
+        media: query,
+        addEventListener: (_evt: string, cb: (e: MediaQueryListEvent) => void) => {
+          if (query.includes('reduce')) {
+            reducedListener = cb;
+          }
+        },
+        removeEventListener: vi.fn(),
+      })),
+    );
+    window.localStorage.clear();
+    document.documentElement.lang = 'en';
+    const { result: themeHook } = renderHook(() => useThemeAndMotion());
+    expect(themeHook.current.isDark).toBe(true);
+    act(() => {
+      reducedListener?.({ matches: true } as MediaQueryListEvent);
+    });
+    expect(themeHook.current.effectiveAnimationsPaused).toBe(true);
+    act(() => {
+      themeHook.current.toggleTheme();
+      themeHook.current.toggleLanguage();
+      themeHook.current.toggleAnimations();
+    });
+    expect(themeHook.current.isDark).toBe(false);
+    expect(document.documentElement.lang).toBe('hi');
+
+    // useFollowUpChat: empty stream -> incomplete error, submit failure -> error message, continue failure
+    const encoder = new TextEncoder();
+    const emptyStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk: '   ' })}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+        controller.close();
+      },
+    });
+    const truncatedStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ chunk: 'Partial reply' })}\n\n`),
+        );
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ done: true, truncated: true })}\n\n`),
+        );
+        controller.close();
+      },
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(emptyStream, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+      )
+      .mockRejectedValueOnce('non-error-chat')
+      .mockResolvedValueOnce(
+        new Response(truncatedStream, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+      )
+      .mockRejectedValueOnce(new Error('Continue failed'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result: chatHook } = renderHook(() =>
+      useFollowUpChat({
+        t: TRANSLATIONS.en,
+        language: 'en',
+        location: DEFAULT_LOCATION,
+        reading: null,
+        plan: null,
+      }),
+    );
+
+    act(() => chatHook.current.setInput('First empty test'));
+    await act(async () => {
+      await chatHook.current.handleSubmit({ preventDefault: vi.fn() } as never);
+    });
+    expect(chatHook.current.messages.at(-1)?.content).toBe(TRANSLATIONS.en.chatIncompleteError);
+
+    act(() => chatHook.current.setInput('Second failure test'));
+    await act(async () => {
+      await chatHook.current.handleSubmit({ preventDefault: vi.fn() } as never);
+    });
+    expect(chatHook.current.messages.at(-1)?.content).toBe(TRANSLATIONS.en.chatUnavailableError);
+
+    act(() => chatHook.current.setInput('Third truncated test'));
+    await act(async () => {
+      await chatHook.current.handleSubmit({ preventDefault: vi.fn() } as never);
+    });
+    const truncId = chatHook.current.messages.at(-1)?.id ?? '';
+    await act(async () => {
+      await chatHook.current.handleContinueMessage(truncId);
+    });
+    await act(async () => {
+      await chatHook.current.handleContinueMessage('non-existent-id');
+    });
+    expect(chatHook.current.messages.at(-1)?.content).toBe('Continue failed');
+
+    // Empty chat submit triggers validation error without hitting fetch
+    await act(async () => {
+      chatHook.current.setInput('   ');
+    });
+    await act(async () => {
+      await chatHook.current.handleSubmit({ preventDefault: vi.fn() } as never);
+    });
+    expect(chatHook.current.inputError).toBeTruthy();
+
+    // citySearchHelpers: debounced search failure + submit cached first city
+    const { dispatchCitySubmit, runDebouncedSearch } =
+      await import('../../src/hooks/citySearchHelpers.js');
+    const setResults = vi.fn();
+    const setHasSearched = vi.fn();
+    const setError = vi.fn();
+    const setIsSearching = vi.fn();
+    const onSelectCity = vi.fn();
+    const submitAbortRef = { current: null as AbortController | null };
+
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Geocode unavailable')));
+    await runDebouncedSearch('Mumbai', 'en', new AbortController().signal, {
+      setResults,
+      setHasSearched,
+      setError,
+      setIsSearching,
+    });
+    expect(setResults).toHaveBeenCalledWith([]);
+    expect(setHasSearched).toHaveBeenCalledWith(true);
+    expect(setError).toHaveBeenCalled();
+    expect(setIsSearching).toHaveBeenCalledWith(false);
+
+    await dispatchCitySubmit(
+      {
+        searchQuery: 'Mumbai',
+        searchResults: [DEFAULT_LOCATION],
+        language: 'en',
+        submitAbortRef,
+      },
+      { setResults, setHasSearched, setError, setIsSearching, onSelectCity },
+    );
+    expect(onSelectCity).toHaveBeenCalledWith(DEFAULT_LOCATION);
+
+    // Abort branches in usePlanGenerator, followUpChatHelpers, and executeCoordinateLoad reverseGeocode catch
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError')));
+    const { result: abortedPlan } = renderHook(() => usePlanGenerator());
+    await act(async () => {
+      await abortedPlan.current.generatePlan({
+        location: DEFAULT_LOCATION,
+        airQuality: createManualAirQualityReading(180),
+        profile: DEFAULT_PROFILE,
+        language: 'en',
+      });
+    });
+    expect(abortedPlan.current.error).toBeNull();
+
+    const { executeContinueTruncatedReply, executeSubmittedQuestion } =
+      await import('../../src/hooks/followUpChatHelpers.js');
+    const chatAbort = new AbortController();
+    chatAbort.abort();
+    const setMessagesMock = vi.fn();
+    const setStreamingMock = vi.fn();
+    await executeSubmittedQuestion('Mask?', 'a-1', [], {
+      t: TRANSLATIONS.en,
+      language: 'en',
+      context: { locationName: 'Delhi', usAqi: 180, categoryLabel: 'Unhealthy' },
+      signal: chatAbort.signal,
+      setMessages: setMessagesMock,
+      setIsStreaming: setStreamingMock,
+      nextErrorId: () => 'err-1',
+    });
+    await executeContinueTruncatedReply('a-1', 'Base', [], {
+      t: TRANSLATIONS.en,
+      language: 'en',
+      context: { locationName: 'Delhi', usAqi: 180, categoryLabel: 'Unhealthy' },
+      signal: chatAbort.signal,
+      setMessages: setMessagesMock,
+      setIsStreaming: setStreamingMock,
+      nextErrorId: () => 'err-2',
+    });
+    expect(setMessagesMock).not.toHaveBeenCalled();
+
+    const { executeCoordinateLoad, useAqiLoader } = await import('../../src/hooks/useAqiLoader.js');
+    const setLocSpy = vi.fn();
+    await executeCoordinateLoad(
+      { latitude: 26.85, longitude: 80.95, language: 'en' },
+      {
+        setLocation: setLocSpy,
+        clearSearchInput: vi.fn(),
+        loadAqiForLocation: vi.fn().mockResolvedValue(undefined),
+      },
+    );
+    await executeCoordinateLoad(
+      { latitude: 26.85, longitude: 80.95, label: 'Lucknow Center', language: 'en' },
+      {
+        setLocation: setLocSpy,
+        clearSearchInput: vi.fn(),
+        loadAqiForLocation: vi.fn().mockResolvedValue(undefined),
+      },
+    );
+    expect(setLocSpy).toHaveBeenCalledTimes(2);
+
+    // citySearchHelpers: invalid short query on submit + empty results network submit
+    await dispatchCitySubmit(
+      { searchQuery: 'a', searchResults: [], language: 'en', submitAbortRef },
+      { setResults, setHasSearched, setError, setIsSearching, onSelectCity },
+    );
+    expect(setError).toHaveBeenCalled();
+
+    const mumbaiLoc = {
+      id: 'city-1',
+      name: 'Mumbai',
+      country: 'India',
+      latitude: 19.076,
+      longitude: 72.8777,
+      source: 'search' as const,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                id: 1,
+                name: 'Mumbai',
+                latitude: 19.076,
+                longitude: 72.8777,
+                country: 'India',
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    await dispatchCitySubmit(
+      { searchQuery: 'Mumbai', searchResults: [], language: 'en', submitAbortRef },
+      { setResults, setHasSearched, setError, setIsSearching, onSelectCity },
+    );
+    expect(onSelectCity).toHaveBeenCalledWith(expect.objectContaining({ name: mumbaiLoc.name }));
+
+    // usePlanGenerator: retryLastPlan after successful plan streams chunk updates
+    const validPlanJson = JSON.stringify({
+      summary: 'Plan summary',
+      bestTimeWindow: '1 PM - 4 PM',
+      worstTimeWindow: '6 AM - 9 AM',
+      dailyRoutine: [
+        {
+          title: 'Walk',
+          detail: 'Midday walk',
+          whyItHelps: 'Lower smog',
+          estimatedImpact: '20% lower exposure',
+        },
+      ],
+      indoorAirHacks: [
+        {
+          title: 'HEPA',
+          detail: 'Run HEPA',
+          whyItHelps: 'Filters PM2.5',
+          estimatedImpact: '40% lower indoor PM2.5',
+        },
+      ],
+      sustainableAlternatives: [
+        {
+          title: 'Metro',
+          detail: 'Use metro',
+          whyItHelps: 'Less tailpipe',
+          estimatedImpact: '10 kg CO2/week',
+        },
+      ],
+      healthProtection: [
+        {
+          title: 'N95',
+          detail: 'Wear N95',
+          whyItHelps: 'Blocks PM2.5',
+          estimatedImpact: '50% less inhalation',
+        },
+      ],
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => {
+        const encoder2 = new TextEncoder();
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(
+              encoder2.encode(`data: ${JSON.stringify({ chunk: validPlanJson })}\n\n`),
+            );
+            controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+            controller.close();
+          },
+        });
+        return Promise.resolve(
+          new Response(stream, {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          }),
+        );
+      }),
+    );
+    await act(async () => {
+      await abortedPlan.current.generatePlan({
+        location: DEFAULT_LOCATION,
+        airQuality: createManualAirQualityReading(180),
+        profile: DEFAULT_PROFILE,
+        language: 'en',
+        bypassCache: true,
+      });
+    });
+    expect(abortedPlan.current.streamCharCount).toBeGreaterThan(0);
+    await act(async () => {
+      await abortedPlan.current.retryLastPlan();
+    });
+    expect(abortedPlan.current.plan?.summary).toBe('Plan summary');
+
+    // citySearchHelpers: submit search network error + already-aborted signal
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network down')));
+    await dispatchCitySubmit(
+      { searchQuery: 'Jaipur', searchResults: [], language: 'en', submitAbortRef },
+      { setResults, setHasSearched, setError, setIsSearching, onSelectCity },
+    );
+    expect(setError).toHaveBeenCalled();
+
+    const preAborted = new AbortController();
+    preAborted.abort();
+    await runDebouncedSearch('Jaipur', 'en', preAborted.signal, {
+      setResults,
+      setHasSearched,
+      setError,
+      setIsSearching,
+    });
+
+    // useProfileForm valid submit clears notes error and invokes onSubmit
+    rerenderForm({ profile: DEFAULT_PROFILE });
+    act(() => {
+      formHook.current.handleSubmit({ preventDefault: vi.fn() } as never);
+    });
+    expect(onSubmit).toHaveBeenCalledWith(DEFAULT_PROFILE);
+
+    // useThemeAndMotion: matchMedia media listener when prefersReducedMotion is false initially
+    act(() => {
+      reducedListener?.({ matches: false } as MediaQueryListEvent);
+    });
+    expect(themeHook.current.isDark).toBe(false);
+
+    // useAqiLoader: non-abort error path + reverse-geocode coordinate match/mismatch updater
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('AQI endpoint down')));
+    const aqiSetError = vi.fn();
+    const { result: aqiLoaderHook } = renderHook(() =>
+      useAqiLoader('en', {
+        setReading: vi.fn(),
+        setError: aqiSetError,
+        setLoading: vi.fn(),
+      }),
+    );
+    await act(async () => {
+      await aqiLoaderHook.current(DEFAULT_LOCATION, true);
+    });
+    expect(aqiSetError).toHaveBeenCalled();
+
+    let latestLoc: LocationData = {
+      id: 'geo-26.8500-80.9500',
+      name: 'Current Location',
+      country: '',
+      latitude: 26.85,
+      longitude: 80.95,
+      source: 'geolocation',
+    };
+    const applyLoc = vi.fn((updater: LocationData | ((prev: LocationData) => LocationData)) => {
+      latestLoc = typeof updater === 'function' ? updater(latestLoc) : updater;
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            resolved: true,
+            name: 'Lucknow',
+            admin1: 'Uttar Pradesh',
+            country: 'India',
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    await executeCoordinateLoad(
+      { latitude: 26.85, longitude: 80.95, language: 'en' },
+      {
+        setLocation: applyLoc as never,
+        clearSearchInput: vi.fn(),
+        loadAqiForLocation: vi.fn().mockResolvedValue(undefined),
+      },
+    );
+    expect(latestLoc.name).toBe('Lucknow');
+    // Verify updater preserves newer location when coordinates no longer match
+    const updaterFn = applyLoc.mock.calls.find((call) => typeof call[0] === 'function')?.[0] as
+      ((prev: LocationData) => LocationData) | undefined;
+    expect(updaterFn?.(DEFAULT_LOCATION)).toEqual(DEFAULT_LOCATION);
+
+    // citySearchHelpers: runDebouncedSearch success, empty submit results, and pre-aborted submit
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            results: [{ id: 2, name: 'Pune', latitude: 18.52, longitude: 73.85, country: 'India' }],
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    setResults.mockClear();
+    await runDebouncedSearch('Pune', 'en', new AbortController().signal, {
+      setResults,
+      setHasSearched,
+      setError,
+      setIsSearching,
+    });
+    expect(setResults).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ name: 'Pune' })]),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ results: [] }), { status: 200 })),
+    );
+    onSelectCity.mockClear();
+    await dispatchCitySubmit(
+      { searchQuery: 'NoSuchPlace', searchResults: [], language: 'en', submitAbortRef },
+      { setResults, setHasSearched, setError, setIsSearching, onSelectCity },
+    );
+    expect(onSelectCity).not.toHaveBeenCalled();
+
+    // useThemeAndMotion: graceful fallback when window.matchMedia is undefined
+    window.localStorage.clear();
+    vi.stubGlobal('matchMedia', undefined);
+    const { result: noMatchMediaHook } = renderHook(() => useThemeAndMotion());
+    expect(noMatchMediaHook.current.isDark).toBe(false);
+    expect(noMatchMediaHook.current.effectiveAnimationsPaused).toBe(false);
 
     vi.unstubAllGlobals();
   });

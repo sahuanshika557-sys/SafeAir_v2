@@ -10,9 +10,9 @@ import {
   LOCATION_CONTEXT_MAX_CHARS,
   LOCATION_FIELD_MAX_CHARS,
   LONGITUDE_BOUND,
-  MAX_AQI_VALUE,
   MAX_CHAT_HISTORY_MESSAGES,
   MAX_FREE_TEXT_LENGTH,
+  MAX_US_AQI,
   PLAN_SUMMARY_CONTEXT_MAX_CHARS,
   POLLUTANT_MAX_UG_M3,
   REPAIR_MALFORMED_MAX_CHARS,
@@ -22,7 +22,7 @@ import {
 } from '../constants/index.js';
 import { lifestyleProfileSchema } from '../utils/validation.js';
 
-export const recommendationItemGeminiSchema: Schema = {
+const recommendationItemGeminiSchema: Schema = {
   type: Type.OBJECT,
   properties: {
     title: { type: Type.STRING, description: 'Short actionable headline.' },
@@ -44,6 +44,7 @@ export const recommendationItemGeminiSchema: Schema = {
   required: ['title', 'detail', 'whyItHelps', 'estimatedImpact'],
 };
 
+/** Structured Gemini JSON schema for the 4-section action plan response. */
 export const actionPlanResponseSchema: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -66,6 +67,7 @@ export const actionPlanResponseSchema: Schema = {
   ],
 };
 
+/** Safety filter configuration enforcing medium+ blocking across Gemini calls. */
 export const geminiSafetySettings = [
   {
     category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -85,6 +87,7 @@ export const geminiSafetySettings = [
   },
 ];
 
+/** Runtime Zod validation schema for `POST /api/plan` payloads. */
 export const planRequestSchema = z.object({
   language: z.enum(['en', 'hi']),
   stream: z.boolean().optional(),
@@ -99,7 +102,7 @@ export const planRequestSchema = z.object({
     source: z.enum(['search', 'geolocation', 'manual']),
   }),
   airQuality: z.object({
-    usAqi: z.number().min(0).max(MAX_AQI_VALUE),
+    usAqi: z.number().min(0).max(MAX_US_AQI),
     pm25: z.number().min(0).max(POLLUTANT_MAX_UG_M3).nullable(),
     pm10: z.number().min(0).max(POLLUTANT_MAX_UG_M3).nullable(),
     no2: z.number().min(0).max(POLLUTANT_MAX_UG_M3).nullable(),
@@ -124,6 +127,7 @@ export const planRequestSchema = z.object({
   profile: lifestyleProfileSchema,
 });
 
+/** Runtime Zod validation schema for `POST /api/chat` payloads. */
 export const chatRequestSchema = z.object({
   language: z.enum(['en', 'hi']),
   stream: z.boolean().optional(),
@@ -140,12 +144,13 @@ export const chatRequestSchema = z.object({
     .max(MAX_CHAT_HISTORY_MESSAGES * CHAT_HISTORY_ROLE_MULTIPLIER),
   context: z.object({
     locationName: z.string().max(LOCATION_CONTEXT_MAX_CHARS),
-    usAqi: z.number().min(0).max(MAX_AQI_VALUE),
+    usAqi: z.number().min(0).max(MAX_US_AQI),
     categoryLabel: z.string().max(CATEGORY_CONTEXT_MAX_CHARS),
     planSummary: z.string().max(PLAN_SUMMARY_CONTEXT_MAX_CHARS).optional(),
   }),
 });
 
+/** Runtime Zod schema for BigDataCloud reverse geocoding responses. */
 export const bigDataCloudResponseSchema = z.object({
   city: z.string().optional().default(''),
   locality: z.string().optional().default(''),

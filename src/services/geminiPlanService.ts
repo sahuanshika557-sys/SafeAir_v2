@@ -39,6 +39,11 @@ interface PlanRequestInputs {
   bypassCache?: boolean;
 }
 
+type PlanContextInputs = Pick<
+  PlanRequestInputs,
+  'location' | 'airQuality' | 'profile' | 'language'
+>;
+
 const planCache = new TtlCache<ActionPlan>(PLAN_CACHE_TTL_MS);
 const inFlightPlanRequests = new Map<string, InFlightPlanEntry>();
 
@@ -80,7 +85,7 @@ async function subscribeToInFlightPlan(
 
 async function attemptPlanJsonRepair(
   malformedText: string,
-  params: Pick<PlanRequestInputs, 'location' | 'airQuality' | 'profile' | 'language'>,
+  params: PlanContextInputs,
   signal: AbortSignal,
 ): Promise<ActionPlan | null> {
   try {
@@ -97,7 +102,12 @@ async function attemptPlanJsonRepair(
     if (!response || !response.ok) {
       return null;
     }
-    const { text, model } = await readPlanOrChatResponseBody(response, () => {}, params.language, 'plan');
+    const { text, model } = await readPlanOrChatResponseBody(
+      response,
+      () => {},
+      params.language,
+      'plan',
+    );
     return parseAndValidatePlanText(text, { ...params, modelUsed: model });
   } catch (err: unknown) {
     if (isAbortError(err)) {
@@ -110,7 +120,7 @@ async function attemptPlanJsonRepair(
 async function parseOrRepairPlan(
   rawJsonText: string,
   model: string | undefined,
-  inputs: Pick<PlanRequestInputs, 'location' | 'airQuality' | 'profile' | 'language'>,
+  inputs: PlanContextInputs,
   signal: AbortSignal,
 ): Promise<ActionPlan> {
   const initialPlan = parseAndValidatePlanText(rawJsonText, { ...inputs, modelUsed: model });
@@ -128,7 +138,7 @@ async function parseOrRepairPlan(
 }
 
 async function fetchAndValidatePlan(
-  inputs: Pick<PlanRequestInputs, 'location' | 'airQuality' | 'profile' | 'language'>,
+  inputs: PlanContextInputs,
   cacheKey: string,
   controller: AbortController,
   cleanup: () => void,

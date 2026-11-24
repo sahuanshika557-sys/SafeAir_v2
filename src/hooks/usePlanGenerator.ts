@@ -30,15 +30,36 @@ export interface UsePlanGeneratorReturn {
   retryLastPlan: () => Promise<void>;
 }
 
+interface PlanGenerationCallbacks {
+  setStreamCharCount: (count: number) => void;
+  setPlan: (plan: ActionPlan) => void;
+  setError: (msg: string) => void;
+  setIsGenerating: (val: boolean) => void;
+}
+
+function handlePlanFailure(
+  err: unknown,
+  params: PlanGenerationParams,
+  signal: AbortSignal,
+  callbacks: Pick<PlanGenerationCallbacks, 'setError' | 'setPlan'>,
+): void {
+  if (isAbortError(err) || signal.aborted) {
+    return;
+  }
+  const fallbackMsg =
+    params.language === 'hi'
+      ? 'अभी AI योजना तैयार नहीं हो सकी। नियम-आधारित मार्गदर्शन दिखाया जा रहा है।'
+      : 'Unable to generate AI plan right now. Showing rule-based guidance.';
+  callbacks.setError(err instanceof Error ? err.message : fallbackMsg);
+  callbacks.setPlan(
+    buildRuleBasedFallbackPlan(params.airQuality, params.profile, params.language, params.location),
+  );
+}
+
 async function runPlanGeneration(
   params: PlanGenerationParams,
   signal: AbortSignal,
-  callbacks: {
-    setStreamCharCount: (count: number) => void;
-    setPlan: (plan: ActionPlan) => void;
-    setError: (msg: string) => void;
-    setIsGenerating: (val: boolean) => void;
-  },
+  callbacks: PlanGenerationCallbacks,
 ): Promise<void> {
   try {
     const result = await generatePersonalizedPlan({
@@ -54,17 +75,7 @@ async function runPlanGeneration(
       callbacks.setPlan(result);
     }
   } catch (err: unknown) {
-    if (isAbortError(err) || signal.aborted) {
-      return;
-    }
-    const fallbackMsg =
-      params.language === 'hi'
-        ? 'अभी AI योजना तैयार नहीं हो सकी। नियम-आधारित मार्गदर्शन दिखाया जा रहा है।'
-        : 'Unable to generate AI plan right now. Showing rule-based guidance.';
-    callbacks.setError(err instanceof Error ? err.message : fallbackMsg);
-    callbacks.setPlan(
-      buildRuleBasedFallbackPlan(params.airQuality, params.profile, params.language, params.location),
-    );
+    handlePlanFailure(err, params, signal, callbacks);
   } finally {
     if (!signal.aborted) {
       callbacks.setIsGenerating(false);

@@ -62,7 +62,12 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
         return;
       }
       try {
-        speakUtteranceText(text, language, () => setIsSpeaking(true), () => setIsSpeaking(false));
+        speakUtteranceText(
+          text,
+          language,
+          () => setIsSpeaking(true),
+          () => setIsSpeaking(false),
+        );
       } catch {
         setIsSpeaking(false);
       }

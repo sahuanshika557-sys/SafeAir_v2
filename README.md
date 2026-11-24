@@ -5,22 +5,32 @@
 ### **[Live Demo: https://safe-air-lilac.vercel.app/](https://safe-air-lilac.vercel.app/)**
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-safe--air--lilac.vercel.app-0f766e?style=flat-square)](https://safe-air-lilac.vercel.app/)
+[![CI](https://github.com/safeair-saathi/safeair-saathi/actions/workflows/ci.yml/badge.svg)](https://github.com/safeair-saathi/safeair-saathi/actions/workflows/ci.yml)
 [![React](https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8_Strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-8.3-646cff?style=flat-square&logo=vite&logoColor=white)](https://vite.dev/)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
-[![Tests Passing](<https://img.shields.io/badge/Tests-85_Passing_(11_Suites)-15803d?style=flat-square>)](#testing)
+[![Tests Passing](<https://img.shields.io/badge/Tests-90_Passing_(12_Suites)-15803d?style=flat-square>)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](./LICENSE)
 
 > **Medical Disclaimer:** All guidance in SafeAir Saathi is for informational and educational purposes only and is **not medical advice**. Always consult a qualified healthcare professional for respiratory symptoms, asthma flare-ups, pregnancy care, or medical emergencies.
 
 ---
 
-## Problem Statement
+## Chosen Vertical & Problem Statement
+
+- **Chosen Vertical:** **Urban Air Quality, Climate, and Public Health** (**PromptWars Challenge 6**).
 
 > _"Create a GenAI-powered assistant that helps families and communities navigate severe winter smog and urban air pollution. It should suggest low-emission daily routines, indoor air quality hacks, and sustainable alternatives tailored to their location and lifestyle, while clearly explaining the direct impact of their choices."_
 
-SafeAir Saathi addresses this challenge by pairing live local air quality telemetry (`US AQI`, `PM2.5`, `PM10`, `NO₂`, and `O₃`) from Open-Meteo with a household lifestyle profile covering vulnerable members, commute mode, work setting, home type, air purifier ownership, cooking fuel, and budget tier. Using Google Gemini (default `gemini-3.5-flash-lite`, with optional `GEMINI_MODEL` first-priority override and automatic ordered fallback across `gemini-3.5-flash-lite` → `gemini-3.8-flash` → `gemini-3.6-flash`) over Server-Sent Events with automatic non-streaming JSON fallback, it produces a structured four-section action plan where every card explains **why it helps** and its **approximate** exposure or CO₂ impact without stale-plan confusion. Scientifically verified prompts plus runtime filtering prevent houseplants-for-smog or cloth-mask PM2.5 myths, while an interactive weekly impact calculator (with diminishing returns and a `65%` cap) and a domain-scoped follow-up Q&A assistant (complete with `Continue` recovery if truncated) help families compare practical swaps. Pure inline SVG visual storytelling and compositor-only animations adapt cleanly to the live AQI tier, `prefers-reduced-motion`, and a persistent footer **Pause animations** toggle, backed by manual US AQI entry, an immediate rule-based safety plan, and 100% English/Hindi parity.
+## Approach & Logic
+
+SafeAir Saathi combines real-time local environmental telemetry with household-aware AI synthesis and deterministic fallbacks so families receive actionable, scientifically accurate winter smog protection even under flaky network or quota conditions:
+
+1. **Live Telemetry + Resilient Manual Fallback:** Direct browser Open-Meteo queries (`10 min` TTL cache, in-flight deduplication, and `400 ms` search debouncing) pair with `/api/aqi`, `/api/geocode`, and `/api/reverse-geocode` server fallbacks plus an explicit `0–500` manual US AQI override.
+2. **Household-Tailored GenAI Orchestration:** The server validates lifestyle inputs via Zod (`src/server/schemas.ts`), isolates untrusted text inside `<<<USER_DATA_START>>>` / `<<<USER_DATA_END>>>` delimiters, and streams structured four-section JSON plans via `@google/genai` (default `gemini-3.5-flash-lite` with optional `GEMINI_MODEL` override and ordered fallback `gemini-3.5-flash-lite` → `gemini-3.8-flash` → `gemini-3.6-flash`), seamlessly degrading to non-streaming JSON, 1 bounded JSON repair pass, or an offline bilingual rule-based plan (`src/utils/fallbackPlan.ts`).
+3. **Scientific Accuracy & Impact Math:** Every AI card and chat answer passes through `src/utils/scientificFilter.ts` to reject debunked claims (such as houseplants removing winter PM2.5 or cloth masks blocking PM2.5), while the interactive Impact Calculator combines weekly swap reductions multiplicatively with `×0.85` diminishing returns and a `65%` cap (`src/utils/impactCalculator.ts`).
+4. **Bilingual & Accessible First:** 100%-key-matched English and Hindi dictionaries (`src/i18n/`), zero-HTML `SafeMarkdown`, light/dark modes, SVG animations synced to `prefers-reduced-motion` and a persistent **Pause animations** toggle, and WCAG 2.2 AA semantics ensure universal usability.
 
 ---
 
@@ -82,41 +92,41 @@ SafeAir Saathi addresses this challenge by pairing live local air quality teleme
 
 See [SECURITY.md](./SECURITY.md) for the complete security architecture and threat model:
 
-- **Server-Side API Key Only:** `GEMINI_API_KEY` is read strictly via `process.env.GEMINI_API_KEY` inside `src/server/geminiRunner.ts` (never bundled into `dist/`, verified via `grep -rn 'GEMINI_API_KEY' dist`). `GET /api/health` returns `{ ok, keyConfigured, model, fallbackModels, runtime, time }`, and optional rate-limited `GET /api/health?probe=1` performs one tiny live Gemini check returning `{ ok, modelTried, status, category }` without exposing any key fragments or raw upstream bodies.
-- **Input & Payload Hardening:** POST endpoints enforce strict media-type parsing for `application/json` / `+json` (`415`), strict `32 KB` body caps (`413`), safe string/Buffer/object/stream `req.body` parsing, Zod runtime validation (`src/utils/validation.ts`), `500`-char text caps, and lat/lon bounds checks.
-- **Prompt-Injection, Scientific Honesty & XSS Guard:** User data is isolated inside `<<<USER_DATA_START>>>` / `<<<USER_DATA_END>>>` delimiters (`src/utils/promptBuilder.ts`); `@google/genai` blocks `BLOCK_MEDIUM_AND_ABOVE`; `src/utils/scientificFilter.ts` strips unsupported houseplant PM2.5, `100%` filtration, and cloth-mask PM2.5 claims; chat markdown renders via our zero-HTML `SafeMarkdown` component (`src/components/SafeMarkdown.tsx`, `src/utils/safeMarkdown.ts`) without `dangerouslySetInnerHTML` or external markdown dependencies.
-- **Headers & Rate Limiting:** `vercel.json`, `server.ts`, and `index.html` apply `Content-Security-Policy`, `Cross-Origin-Opener-Policy: same-origin`, `X-Content-Type-Options: nosniff`, `X-Permitted-Cross-Domain-Policies: none`, `Referrer-Policy: no-referrer`, and `X-Frame-Options: DENY`. Sliding-window rate limiters (`10/min` client, `20/min` per-IP server with bounded map) and `AbortController` timeouts (`15s` geo/AQI, `45s` server AI within `maxDuration: 60`) guard every route.
+- **Server-Side API Key Only:** `GEMINI_API_KEY` is read strictly via Zod-validated `process.env` inside `src/server/env.ts` (never bundled into `dist/`, verified via `grep` scan in CI). `GET /api/health` returns `{ ok, keyConfigured, model, fallbackModels, runtime, time }`, and rate-limited `GET /api/health?probe=1` performs one tiny live Gemini check without exposing keys or raw upstream bodies.
+- **Input & Payload Hardening:** POST endpoints enforce strict `application/json` / `+json` media-type checks (`415`), `32 KB` body caps (`413`), safe string/Buffer/object/stream parsing, Zod validation (`src/utils/validation.ts`, `src/server/schemas.ts`), `500`-char text caps, and coordinate bounds checks.
+- **Prompt-Injection, Scientific Honesty & XSS Guard:** User data is isolated inside `<<<USER_DATA_START>>>` / `<<<USER_DATA_END>>>` delimiters (`src/utils/promptBuilder.ts`); `@google/genai` blocks `BLOCK_MEDIUM_AND_ABOVE`; `src/utils/scientificFilter.ts` strips unsupported claims; chat markdown renders via zero-HTML `SafeMarkdown` (`src/components/SafeMarkdown.tsx`, `src/utils/safeMarkdown.ts`) without `dangerouslySetInnerHTML`.
+- **Headers, Restrictive CORS & Rate Limiting:** `vercel.json`, `server.ts`, and `src/server/httpUtils.ts` apply `Content-Security-Policy` (`style-src 'self'` in production), `Strict-Transport-Security`, `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Resource-Policy: same-origin`, `Vary: Origin`, restrictive same-origin CORS (`403` on cross-origin `/api/*`), sliding-window rate limits (`10/min` client, `20/min` per-IP server), and `AbortController` timeouts (`15s` geo/AQI, `45s` server AI within `maxDuration: 60`).
 
 ### 3. Efficiency & Mobile 95+ Performance Budget
 
 - **Debouncing, Request Deduplication & Cancellation:** City geocoding debounces input by `400 ms` (`src/hooks/useDebounce.ts`); concurrent identical calls in `fetchAirQuality` (`src/services/airQuality.ts`) and `generatePersonalizedPlan` (`src/services/gemini.ts`) share a single in-flight request with abort-safe subscriber refcounting.
 - **TTL Caching & CDN Cache Headers:** Open-Meteo AQI readings cache for `10 minutes`, validated plans cache for `30 minutes`, reverse-geocoded place names cache for `1 hour`, and GET proxy routes set `Cache-Control: public, s-maxage=300` (or `3600`) with `stale-while-revalidate`.
 - **Streaming + Non-Streaming Fallback & Code Splitting:** `/api/plan` and `/api/chat` stream SSE tokens (`maxOutputTokens`: `4096` plan / `2400` chat) and wait for the first chunk before flushing headers, automatically falling back to non-streaming JSON (and performing at most 1 JSON repair pass on malformed plan output). `ImpactCalculator` and `FollowUpChat` are lazy-loaded (`React.lazy`); below-the-fold spot illustrations are deferred via `LazyIllustrationGate` (`IntersectionObserver`); recommendation cards are memoized (`React.memo`).
-- **Lighthouse-Style Mobile (`95+`) Budget Discipline:** Zero external raster photos, zero stock image requests, zero remote Google Fonts (`system-ui` stack), pure inline SVG visual layer (`~9.6 kB` gzipped), and compositor-only (`transform` + `opacity`) keyframes eliminate layout shifts (CLS = `0`) and extra network round-trips. Replacing `react-markdown` with custom `SafeMarkdown` cut the `FollowUpChat` chunk by **`92.2%`** (`44.81 kB` → `3.50 kB` gzip) and shrank the total production bundle by **`-32.10 kB` gzipped (`-13.3%`)**.
-- **Production Bundle Sizes (`npm run build`, `160` modules):**
+- **Lighthouse-Style Mobile (`95+`) Budget Discipline:** Zero external raster photos, zero stock image requests, zero remote Google Fonts (`system-ui` stack), pure inline SVG visual layer, and compositor-only (`transform` + `opacity`) keyframes eliminate layout shifts (CLS = `0`) and extra network round-trips. Replacing `react-markdown` with custom `SafeMarkdown` cut the `FollowUpChat` chunk by **`90.4%`** (`44.81 kB` → `4.29 kB` gzip) and reduced total gzipped assets from **`241.28 kB` → `212.15 kB`** (**`-29.13 kB` / `-12.1%`**).
+- **Production Bundle Sizes (`npm run build`, `196` modules):**
   - `dist/index.html`: `1.78 kB` (`gzip: 0.78 kB`)
-  - Initial JS entry (`dist/assets/index-*.js`): `166.71 kB` (`gzip: 41.42 kB`)
-  - Shared CSS (`dist/assets/index-*.css`): `41.56 kB` (`gzip: 8.12 kB`)
-  - Lazy chunks: `ImpactCalculator` `6.99 kB` (`1.91 kB` gzip), `FollowUpChat` `10.79 kB` (`3.50 kB` gzip)
+  - Initial JS entry (`dist/assets/index-*.js`): `172.93 kB` (`gzip: 43.47 kB`)
+  - Shared CSS (`dist/assets/index-*.css`): `41.61 kB` (`gzip: 8.13 kB`)
+  - Lazy chunks: `ImpactCalculator` `7.46 kB` (`2.03 kB` gzip), `FollowUpChat` `13.49 kB` (`4.29 kB` gzip)
   - Vendor chunks: `vendor-zod` `84.02 kB` (`23.95 kB` gzip), `vendor-react` `425.68 kB` (`129.50 kB` gzip)
-  - **Total Gzipped Assets:** **`209.18 kB`** (down from **`241.28 kB`** before the visual + markdown upgrade)
+  - **Total Gzipped Assets:** **`212.15 kB`** (down from **`241.28 kB`** before the custom markdown & modularization pass)
 
 ### 4. Testing
 
-- **Comprehensive Vitest Suite (`11` files, `85` passing tests):** Covers AQI math, Zod validation, cache/rate-limiting, diminishing-returns calculator & duplicated-prefix regression checks, 100% EN/HI translation key parity, `SafeMarkdown` AST parsing & normalization, `scientificFilter` EN/HI guards, error classification (`classifyUpstreamError` / `getLocalizedApiErrorMessage`), hooks, service deduplication & JSON repair, `MAX_TOKENS` / truncation recovery, Vercel serverless edge cases (`string`/`Buffer`/`object`/stream `req.body`, strict media types, retries, ordered 3-model fallback, `GET /api/health?probe=1`), SVG AQI tiers, rAF gauge animation, `CleanAirThoughtCard` pause/rotation, footer animation toggle, XSS neutralization, and `jest-axe` accessibility audits.
-- **Measured V8 Coverage (`npm run test:coverage`):**
-  - **All measured files (`api/`, `src/server/`, `src/utils/`, `src/services/`, `src/hooks/`):** **`95.00%` Statements | `86.36%` Branches | `98.54%` Functions | `94.96%` Lines**
+- **Comprehensive Vitest Suite (`12` suites, `90` passing tests):** Covers AQI math, Zod validation, cache/rate-limiting, diminishing-returns calculator & duplicated-prefix regression checks, 100% EN/HI translation key parity, `SafeMarkdown` AST parsing & normalization, `scientificFilter` EN/HI guards, error classification, custom hooks, service deduplication & JSON repair, `MAX_TOKENS` / truncation recovery, end-to-end `<App />` flow integration (`tests/integration/appFlows.test.tsx`), restrictive CORS & Vercel serverless contract tests (`tests/server/apiHandlers.test.ts`), and `jest-axe` accessibility audits in light/dark themes and English/Hindi.
+- **Measured V8 Coverage (`npm run test:coverage`, enforced thresholds `94%` lines/stmts, `95%` funcs, `90%` branches):**
+  - **All measured files (`api/`, `src/server/`, `src/utils/`, `src/services/`, `src/hooks/`):** **`98.71%` Statements | `90.92%` Branches | `97.60%` Functions | `98.68%` Lines**
   - `api/`: **`100%`** Statements / Branches / Functions / Lines
-  - `src/utils/`: **`98.85%`** Statements | **`94.42%`** Branches | **`100%`** Functions | **`98.83%`** Lines
-  - `src/services/`: **`94.20%`** Statements | **`100%`** Functions
-  - `src/server/`: **`93.02%`** Statements | **`98.11%`** Functions | **`93.00%`** Lines
-  - `src/hooks/`: **`92.97%`** Statements | **`95.65%`** Functions
+  - `src/utils/`: **`99.59%` Statements | `93.96%` Branches | `100%` Functions | `99.58%` Lines**
+  - `src/hooks/`: **`99.53%` Statements | `91.71%` Branches | `98.51%` Functions | `99.50%` Lines**
+  - `src/services/`: **`97.85%` Statements | `87.84%` Branches | `100%` Functions | `97.83%` Lines**
+  - `src/server/`: **`97.79%` Statements | `89.16%` Branches | `93.13%` Functions | `97.77%` Lines**
 
 ### 5. Accessibility
 
 - **Semantic Landmarks & Focus Management:** Single `<h1>`, landmarks (`<header>`, `<nav>`, `<main>`, `<section>`, `<footer>`), skip-to-content link, synchronized `<html lang>`, WAI-ARIA `tablist`/`tab`/`tabpanel` keyboard navigation (`ArrowLeft`, `ArrowRight`, `Home`, `End`), and automatic focus transfer onto newly generated plans.
-- **Screen Readers, Contrast & Motion Controls:** Explicit `<label>` / `<fieldset>` / `<legend>` groupings, `aria-required`, `aria-invalid`, `aria-describedby`, `aria-live="polite"` (omitted intentionally on rotating `CleanAirThoughtCard` so screen readers are never interrupted), `role="status"` for outdated plan notices, `role="alert"` strictly for errors, localized `role="img"` labels on AQI gauge and hero skyline SVGs, `>= 44×44 px` touch targets, `:focus-visible` outlines, light/dark modes, `prefers-reduced-motion` + persistent footer **Pause animations** toggle (`.animations-paused`), non-color-only AQI status, and optional EN/HI Web Speech API narration.
-- **Zero `jest-axe` Violations:** Verified across all interactive components including error, empty, fallback, truncated chat, rotating thought card, and outdated-plan states (`tests/components/components.test.tsx`).
+- **Screen Readers, Contrast & Motion Controls:** Explicit `<label>` / `<fieldset>` / `<legend>` groupings, `aria-required`, `aria-invalid`, `aria-describedby`, isolated `aria-live="polite"` strictly around `AqiReadingStatusPanel`, `role="status"` for outdated plan notices, `role="alert"` strictly for errors, localized `role="img"` labels on AQI gauge and hero skyline SVGs, `>= 44×44 px` touch targets, responsive `sm:whitespace-nowrap` reflow on 320px/400% zoom, `:focus-visible` outlines, light/dark modes, `prefers-reduced-motion` + persistent footer **Pause animations** toggle (`.animations-paused`), non-color-only AQI status, and optional EN/HI Web Speech API narration.
+- **Zero `jest-axe` Violations:** Verified across all components, states, English & Hindi languages, and light & dark themes (`tests/components/components.test.tsx`, `tests/integration/appFlows.test.tsx`).
 
 ### 6. Problem Statement Alignment
 
@@ -124,44 +134,30 @@ See [SECURITY.md](./SECURITY.md) for the complete security architecture and thre
 
 ---
 
-## Architecture
+## How the Solution Works (Architecture)
 
-```text
-+-------------------------------------------------------------------------+
-| Browser SPA (React 19 + TypeScript Strict + Tailwind CSS v4)            |
-|  - Header (skip link, nav, EN/HI toggle, Light/Dark theme)               |
-|  - AqiHeroCard   <--> HeroSkylineIllustration + AqiGauge + ThoughtCard   |
-|  - ProfileForm   <--> Zod validation + 500-char sanitizer               |
-|  - ActionPlanView <-- usePlanGenerator (SSE / JSON + outdated detection)|
-|  - ImpactCalculator (Lazy SVG) & FollowUpChat (Lazy, zero-HTML SafeMD)  |
-|  - Footer        <--> Persistent Pause animations (.animations-paused)  |
-+-------------------+-----------------------------------+-----------------+
-                    | Direct browser fetch (with        | POST /api/plan, /api/chat
-                    | /api/geocode & /api/aqi fallbacks)| GET /api/reverse-geocode, /api/health
-                    v                                   v
-+-----------------------------------+   +---------------------------------+
-| Open-Meteo & Reverse Geocode APIs |   | Vercel Serverless (/api/*) &    |
-|  - geocoding-api.open-meteo.com   |   | Express Dev Server (server.ts)  |
-|  - air-quality-api.open-meteo.com |   |  - api/plan.ts   (maxDuration:60)
-|  - api.bigdatacloud.net (server)  |   |  - api/chat.ts   (maxDuration:60)
-+-----------------------------------+   |  - api/geocode.ts, api/aqi.ts   |
-                    ^                   |  - api/reverse-geocode.ts       |
-                    | Proxy + TTL Cache |  - api/health.ts (?probe=1)     |
-                    +-------------------+  Shared: src/server/apiHandlers |
-                                        |  (Zod, rate limit, SSE/JSON,    |
-                                        |   retries, MAX_TOKENS, science) |
-                                        +----------------+----------------+
-                                                         | GEMINI_API_KEY
-                                                         | (process.env only)
-                                                         v
-                                         +---------------------------------+
-                                         | Google Gemini API (@google/genai)|
-                                         |  - GEMINI_MODEL (if set, first) |
-                                         |  - fallback list:               |
-                                         |    1. gemini-3.5-flash-lite     |
-                                         |    2. gemini-3.8-flash          |
-                                         |    3. gemini-3.6-flash          |
-                                         +---------------------------------+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed request lifecycles and folder responsibilities.
+
+```mermaid
+flowchart LR
+  Browser["Browser SPA (React 19 + TS + Tailwind v4)"]
+  OMGeo["Open-Meteo Geocoding API"]
+  OMAqi["Open-Meteo Air Quality API"]
+  Server["Vercel Serverless (/api/*) & Express (server.ts)"]
+  BDC["BigDataCloud Reverse Geocode"]
+  Gemini["Google Gemini API (@google/genai)"]
+
+  Browser -- "Debounced city search (400 ms)" --> OMGeo
+  Browser -- "Live AQI fetch (deduped + 10m TTL)" --> OMAqi
+  Browser -- "Fallback /api/geocode & /api/aqi" --> Server
+  Browser -- "GET /api/reverse-geocode" --> Server
+  Browser -- "POST /api/plan & /api/chat (SSE / JSON)" --> Server
+  Browser -- "GET /api/health[?probe=1]" --> Server
+
+  Server -- "Proxy + CDN cache headers" --> OMGeo
+  Server -- "Proxy + CDN cache headers" --> OMAqi
+  Server -- "Coordinate lookup" --> BDC
+  Server -- "GEMINI_API_KEY (src/server/env.ts)" --> Gemini
 ```
 
 ### Folder Structure
@@ -185,6 +181,8 @@ See [SECURITY.md](./SECURITY.md) for the complete security architecture and thre
 ├── index.html               # CSP header, referrer policy, and metadata
 ├── SECURITY.md              # Detailed security architecture and threat model
 ├── TESTING.md               # Test commands and suite overview
+├── ARCHITECTURE.md          # Data flow diagram and request lifecycle architecture
+├── CONTRIBUTING.md          # Contributor setup, coding standards, and PR conventions
 └── LICENSE                  # MIT License
 ```
 
@@ -235,7 +233,7 @@ GEMINI_FALLBACK_MODEL="gemini-3.8-flash"
 APP_URL="http://localhost:3000"
 ```
 
-- `GEMINI_API_KEY`: Read exclusively on the server via `process.env.GEMINI_API_KEY` inside `src/server/apiHandlers.ts`.
+- `GEMINI_API_KEY`: Read exclusively on the server via Zod-validated `process.env` inside `src/server/env.ts`.
 - `GEMINI_MODEL` / `GEMINI_FALLBACK_MODEL`: Optional overrides; when `GEMINI_MODEL` is set, it runs first ahead of the ordered default fallback list (`gemini-3.5-flash-lite`, `gemini-3.8-flash`, `gemini-3.6-flash`).
 - **Important:** Never commit `.env` to version control (it is excluded by `.gitignore`), and **never** prefix `GEMINI_API_KEY` with `VITE_`—client-prefixed variables are bundled into browser JavaScript.
 
@@ -318,7 +316,7 @@ If `/api/plan` or `/api/chat` falls back to rule-based guidance on Vercel:
 
 | Command                 | Purpose                                                                                                       |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `npm test`              | Run all 85 Vitest unit, service, server handler, component, and `jest-axe` accessibility tests                |
+| `npm test`              | Run all 90 Vitest unit, service, server handler, integration, component, and `jest-axe` tests                 |
 | `npm run test:coverage` | Run the full suite and generate V8 coverage for `api`, `src/server`, `src/utils`, `src/services`, `src/hooks` |
 | `npm run lint`          | Run ESLint (`typescript-eslint`, `react-hooks`, `jsx-a11y`, strict code-quality rules)                        |
 | `npm run lint:fix`      | Automatically fix ESLint-fixable style and import issues (`eslint . --fix`)                                   |
@@ -338,11 +336,11 @@ See [TESTING.md](./TESTING.md) and [SECURITY.md](./SECURITY.md) for additional d
 
 ---
 
-## Limitations and Assumptions
+## Assumptions Made & Limitations
 
-- **Approximate Impact Figures:** Weekly CO₂ savings and PM2.5 exposure reductions in `src/constants/index.ts`, `src/utils/impactCalculator.ts`, and AI/fallback cards are conservative order-of-magnitude educational estimates (with diminishing returns `×0.85` and a `65%` cap in the calculator); actual outcomes depend on trip length, mask facial seal fit, indoor air-exchange rate, and electricity grid mix.
-- **Not Medical Advice:** All content is strictly informational and does not substitute for clinical diagnosis or emergency care.
-- **Regional Grid Data:** Open-Meteo provides modeled/assimilated regional CAMS grids that may smooth localized roadside or indoor smoke spikes; users with local monitors can apply **Enter AQI manually**.
+- **Approximate Impact Figures (Assumption):** Weekly CO₂ savings and PM2.5 exposure reductions in `src/constants/index.ts`, `src/utils/impactCalculator.ts`, and AI/fallback cards are conservative order-of-magnitude educational estimates (assuming overlapping indoor/outdoor interventions combine multiplicatively with `×0.85` diminishing returns capped at `65%`). Actual real-world reductions depend on trip length, mask facial seal fit, room air-exchange rate, and electricity grid mix.
+- **Not Medical Advice (Assumption):** Guidance is strictly informational and educational; it assumes users seek qualified clinical care for respiratory emergencies, asthma attacks, or pregnancy-related symptoms.
+- **Regional Grid Data & Connectivity Fallback (Assumption):** Open-Meteo provides modeled/assimilated regional CAMS grids that may smooth localized roadside or indoor smoke spikes; users with personal air meters can override readings via **Enter AQI manually**, and the app assumes offline/unconfigured environments safely use deterministic rule-based guidance (`src/utils/fallbackPlan.ts`).
 
 ---
 

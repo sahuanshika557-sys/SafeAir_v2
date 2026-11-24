@@ -98,6 +98,8 @@ describe('Safe markdown parser and normalizer', () => {
     expect(blocks[2]).toMatchObject({ type: 'ol' });
     expect(blocks[3]).toMatchObject({ type: 'ul' });
 
+    expect(parseSafeMarkdown('**Bold across\nnewline**')).toMatchObject([{ type: 'paragraph' }]);
+
     expect(sanitizeChatScientificClaims('', 'en')).toEqual({ text: '', flaggedClaims: [] });
   });
 });
@@ -189,6 +191,31 @@ describe('Scientific accuracy filter & prompt instructions', () => {
     expect(sanitized.plan.healthProtection[0]?.whyItHelps).not.toContain(
       'Stops 100% of smog particles',
     );
+
+    const hiPlan: ActionPlan = {
+      ...plan,
+      indoorAirHacks: [
+        {
+          title: 'बेडरूम में पौधे रखें',
+          detail: 'स्नेक प्लांट हवा शुद्ध करते हैं। दूसरी बार भी स्नेक प्लांट हवा शुद्ध करते हैं।',
+          whyItHelps: 'यह 100% प्रदूषण हटाता है।',
+          estimatedImpact: '15%',
+          timeWindow: 'सुबह',
+        },
+      ],
+      healthProtection: [
+        {
+          title: 'कपड़े का रुमाल बाँधें',
+          detail: 'कपड़े का मास्क PM2.5 रोकता है।',
+          whyItHelps: 'धूल कम होती है।',
+          estimatedImpact: '20%',
+        },
+      ],
+    };
+    const hiSanitized = sanitizePlanScientificClaims(hiPlan, 'hi');
+    expect(hiSanitized.plan.indoorAirHacks[0]?.title).toContain('HEPA');
+    expect(hiSanitized.plan.indoorAirHacks[0]?.timeWindow).toBe('सुबह');
+    expect(hiSanitized.plan.healthProtection[0]?.title).toContain('N95');
   });
 
   it('embeds LANGUAGE LOCK, COMPLETENESS RULE, and scientific accuracy rules in prompts', () => {

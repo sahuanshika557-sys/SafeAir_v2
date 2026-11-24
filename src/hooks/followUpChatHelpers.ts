@@ -38,8 +38,7 @@ export function buildChatRequestContext(params: {
   };
 }
 
-/** Updates a single message by ID in an immutable message array. */
-export function updateChatMessageById(
+function updateChatMessageById(
   messages: readonly ChatMessage[],
   targetId: string,
   updater: (message: ChatMessage) => ChatMessage,
@@ -47,8 +46,7 @@ export function updateChatMessageById(
   return messages.map((msg) => (msg.id === targetId ? updater(msg) : msg));
 }
 
-/** Formats continuation chunk text appended after a truncated assistant reply. */
-export function appendContinuedReply(
+function appendContinuedReply(
   baseContent: string,
   continuation: string,
   joinPrefix: string,
@@ -56,13 +54,17 @@ export function appendContinuedReply(
   return continuation ? `${baseContent}${joinPrefix}${continuation}` : baseContent;
 }
 
-/** Builds a standardized assistant error chat entry when continuation fails. */
-export function createAssistantErrorEntry(id: string, message: string): ChatMessage {
-  return { id, role: 'assistant', content: message, timestamp: new Date().toISOString(), isError: true };
+function createAssistantErrorEntry(id: string, message: string): ChatMessage {
+  return {
+    id,
+    role: 'assistant',
+    content: message,
+    timestamp: new Date().toISOString(),
+    isError: true,
+  };
 }
 
-/** Returns a safe localized error string from an unknown chat failure value. */
-export function resolveChatErrorMessage(err: unknown, t: TranslationDictionary): string {
+function resolveChatErrorMessage(err: unknown, t: TranslationDictionary): string {
   return err instanceof Error ? err.message : t.chatUnavailableError;
 }
 
@@ -126,12 +128,36 @@ export async function executeSubmittedQuestion(
     if (!isAbortError(err)) {
       const message = resolveChatErrorMessage(err, deps.t);
       deps.setMessages((prev) =>
-        updateChatMessageById(prev, assistantId, (m) => ({ ...m, content: message, isError: true, isTruncated: false })),
+        updateChatMessageById(prev, assistantId, (m) => ({
+          ...m,
+          content: message,
+          isError: true,
+          isTruncated: false,
+        })),
       );
     }
   } finally {
     deps.setIsStreaming(false);
   }
+}
+
+function handleContinueChatError(
+  err: unknown,
+  targetMsgId: string,
+  deps: Pick<ChatExecutionDeps, 'setMessages' | 'nextErrorId' | 't'>,
+): void {
+  if (isAbortError(err)) {
+    return;
+  }
+  const errEntry = createAssistantErrorEntry(
+    deps.nextErrorId(),
+    resolveChatErrorMessage(err, deps.t),
+  );
+  deps.setMessages((prev) =>
+    updateChatMessageById(prev, targetMsgId, (m) => ({ ...m, isTruncated: false })).concat(
+      errEntry,
+    ),
+  );
 }
 
 /** Streams continuation text onto a previously truncated assistant message. */
@@ -152,7 +178,10 @@ export async function executeContinueTruncatedReply(
       signal: deps.signal,
       onToken: (acc) =>
         deps.setMessages((prev) =>
-          updateChatMessageById(prev, targetMsgId, (m) => ({ ...m, content: appendContinuedReply(baseContent, acc, joinPrefix) })),
+          updateChatMessageById(prev, targetMsgId, (m) => ({
+            ...m,
+            content: appendContinuedReply(baseContent, acc, joinPrefix),
+          })),
         ),
       onComplete: ({ truncated }) => {
         continuationTruncated = truncated;
@@ -166,10 +195,7 @@ export async function executeContinueTruncatedReply(
       })),
     );
   } catch (err: unknown) {
-    if (!isAbortError(err)) {
-      const errEntry = createAssistantErrorEntry(deps.nextErrorId(), resolveChatErrorMessage(err, deps.t));
-      deps.setMessages((prev) => updateChatMessageById(prev, targetMsgId, (m) => ({ ...m, isTruncated: false })).concat(errEntry));
-    }
+    handleContinueChatError(err, targetMsgId, deps);
   } finally {
     deps.setIsStreaming(false);
   }

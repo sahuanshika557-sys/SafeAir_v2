@@ -74,7 +74,7 @@ export function PlanStatePanels({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-red-800 px-4 py-2 text-sm font-semibold text-white hover:bg-red-900 transition-colors whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-red-800 px-4 py-2 text-sm font-semibold text-white hover:bg-red-900 transition-colors sm:whitespace-nowrap shrink-0"
           >
             {t.retryBtn}
           </button>
@@ -99,7 +99,7 @@ export function PlanStatePanels({
           <button
             type="button"
             onClick={onRegenerateForCurrent ?? onRetry}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 dark:bg-teal-700 dark:hover:bg-teal-600 transition-colors whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 dark:bg-teal-700 dark:hover:bg-teal-600 transition-colors sm:whitespace-nowrap shrink-0"
           >
             {t.regenerateForLocationBtn}
           </button>

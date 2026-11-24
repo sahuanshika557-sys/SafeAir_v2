@@ -23,18 +23,20 @@ interface SseStreamState {
   finishReason?: string;
 }
 
+interface ParsedSseEventPayload {
+  model?: string;
+  error?: string;
+  errorType?: string;
+  category?: string;
+  replacementText?: string;
+  chunk?: string;
+  done?: boolean;
+  truncated?: boolean;
+  finishReason?: string;
+}
+
 function applyParsedSseEvent(
-  event: {
-    model?: string;
-    error?: string;
-    errorType?: string;
-    category?: string;
-    replacementText?: string;
-    chunk?: string;
-    done?: boolean;
-    truncated?: boolean;
-    finishReason?: string;
-  },
+  event: ParsedSseEventPayload,
   state: SseStreamState,
   onChunk: (text: string) => void,
   language: Language,
@@ -47,7 +49,12 @@ function applyParsedSseEvent(
     if (event.errorType) {
       console.warn('[SafeAir Saathi] AI stream failed:', { errorType: event.errorType });
     }
-    const localized = resolveCategoryErrorMessage(event.category, event.error, language, serviceType);
+    const localized = resolveCategoryErrorMessage(
+      event.category,
+      event.error,
+      language,
+      serviceType,
+    );
     throw new Error(localized ?? event.error);
   }
   if (event.replacementText) {
@@ -149,7 +156,12 @@ export async function readPlanOrChatResponseBody(
     }
     const payload = parsed.data;
     if (payload.error) {
-      const msg = resolveCategoryErrorMessage(payload.category, payload.error, language, serviceType);
+      const msg = resolveCategoryErrorMessage(
+        payload.category,
+        payload.error,
+        language,
+        serviceType,
+      );
       throw new Error(msg ?? payload.error);
     }
     const text = payload.text ?? '';

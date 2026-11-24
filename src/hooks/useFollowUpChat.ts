@@ -1,9 +1,12 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  type Dispatch,
   type RefObject,
+  type SetStateAction,
   type SyntheticEvent,
 } from 'react';
 import type { TranslationDictionary } from '../i18n/translations.js';
@@ -49,9 +52,9 @@ async function prepareAndSubmitQuestion(
     buildContext: () => ReturnType<typeof buildChatRequestContext>;
     startRequestAbort: () => AbortController;
     setInputError: (err: string | null) => void;
-    setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+    setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
     setInput: (value: string) => void;
-    setIsStreaming: (val: boolean) => void;
+    setIsStreaming: Dispatch<SetStateAction<boolean>>;
   },
 ): Promise<void> {
   const validation = validateChatMessage(input, state.language);
@@ -61,10 +64,18 @@ async function prepareAndSubmitQuestion(
     return;
   }
   deps.setInputError(null);
-  const userMsg: ChatMessage = { id: deps.nextId('u'), role: 'user', content: validation.sanitized, timestamp: new Date().toISOString() };
+  const userMsg: ChatMessage = {
+    id: deps.nextId('u'),
+    role: 'user',
+    content: validation.sanitized,
+    timestamp: new Date().toISOString(),
+  };
   const assistantId = deps.nextId('a');
   const nextHistory = [...state.messages, userMsg];
-  deps.setMessages([...nextHistory, { id: assistantId, role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
+  deps.setMessages([
+    ...nextHistory,
+    { id: assistantId, role: 'assistant', content: '', timestamp: new Date().toISOString() },
+  ]);
   deps.setInput('');
   deps.setIsStreaming(true);
   await executeSubmittedQuestion(validation.sanitized, assistantId, nextHistory, {
@@ -78,58 +89,117 @@ async function prepareAndSubmitQuestion(
   });
 }
 
+async function dispatchChatContinue(
+  targetMsgId: string,
+  state: {
+    t: TranslationDictionary;
+    language: Language;
+    messages: ChatMessage[];
+    isStreaming: boolean;
+  },
+  deps: {
+    buildContext: () => ReturnType<typeof buildChatRequestContext>;
+    startRequestAbort: () => AbortController;
+    setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
+    setIsStreaming: Dispatch<SetStateAction<boolean>>;
+    nextId: (prefix: string) => string;
+  },
+): Promise<void> {
+  const targetIdx = state.messages.findIndex((m) => m.id === targetMsgId);
+  const targetMessage = targetIdx >= 0 ? state.messages[targetIdx] : null;
+  if (!targetMessage || state.isStreaming) {
+    return;
+  }
+  deps.setIsStreaming(true);
+  await executeContinueTruncatedReply(
+    targetMsgId,
+    targetMessage.content,
+    state.messages.slice(0, targetIdx + 1),
+    {
+      t: state.t,
+      language: state.language,
+      context: deps.buildContext(),
+      signal: deps.startRequestAbort().signal,
+      setMessages: deps.setMessages,
+      setIsStreaming: deps.setIsStreaming,
+      nextErrorId: () => deps.nextId('a-err'),
+    },
+  );
+}
+
+function useChatIdAndAbort(): {
+  nextId: (prefix: string) => string;
+  startRequestAbort: () => AbortController;
+} {
+  const abortRef = useRef<AbortController | null>(null);
+  const msgSeqRef = useRef<number>(1);
+  useEffect(() => () => abortRef.current?.abort(), []);
+  const nextId = useCallback(
+    (p: string): string => `${p}-${Date.now()}-${msgSeqRef.current++}`,
+    [],
+  );
+  const startRequestAbort = useCallback((): AbortController => {
+    abortRef.current?.abort();
+    const c = new AbortController();
+    abortRef.current = c;
+    return c;
+  }, []);
+  return { nextId, startRequestAbort };
+}
+
+function useChatState() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState<string>('');
+  const [inputError, setInputError] = useState<string | null>(null);
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const setters = useMemo(
+    () => ({ setMessages, setInput, setInputError, setIsStreaming, inputRef }),
+    [],
+  );
+  return { messages, input, inputError, isStreaming, setters };
+}
+
 /**
  * Manages scoped follow-up Q&A message state, streaming updates, abort cleanup, and continuation.
  */
 export function useFollowUpChat(params: UseFollowUpChatParams): UseFollowUpChatResult {
   const { t, language, location, reading, plan } = params;
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState<string>('');
-  const [inputError, setInputError] = useState<string | null>(null);
-  const [isStreaming, setIsStreaming] = useState<boolean>(false);
-  const abortRef = useRef<AbortController | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const msgSeqRef = useRef<number>(1);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
-  const nextId = useCallback((prefix: string): string => `${prefix}-${Date.now()}-${msgSeqRef.current++}`, []);
+  const { messages, input, inputError, isStreaming, setters } = useChatState();
+  const { nextId, startRequestAbort } = useChatIdAndAbort();
   const buildContext = useCallback(
-    () => buildChatRequestContext({ language, location, reading, plan, fallbackLabel: t.notAvailable }),
+    () =>
+      buildChatRequestContext({ language, location, reading, plan, fallbackLabel: t.notAvailable }),
     [language, location, plan, reading, t.notAvailable],
   );
-  const startRequestAbort = useCallback((): AbortController => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    return controller;
-  }, []);
-
   const handleSubmit = useCallback(
     (e: SyntheticEvent<HTMLFormElement>): Promise<void> => {
       e.preventDefault();
       return prepareAndSubmitQuestion(
         input,
         { t, language, messages },
-        { inputRef, nextId, buildContext, startRequestAbort, setInputError, setMessages, setInput, setIsStreaming },
+        { ...setters, nextId, buildContext, startRequestAbort },
       );
     },
-    [buildContext, input, language, messages, nextId, startRequestAbort, t],
+    [buildContext, input, language, messages, nextId, setters, startRequestAbort, t],
   );
-
   const handleContinueMessage = useCallback(
-    async (targetMsgId: string): Promise<void> => {
-      const targetIdx = messages.findIndex((m) => m.id === targetMsgId);
-      const targetMessage = targetIdx >= 0 ? messages[targetIdx] : null;
-      if (!targetMessage || isStreaming) {
-        return;
-      }
-      setIsStreaming(true);
-      await executeContinueTruncatedReply(targetMsgId, targetMessage.content, messages.slice(0, targetIdx + 1), {
-        t, language, context: buildContext(), signal: startRequestAbort().signal, setMessages, setIsStreaming, nextErrorId: () => nextId('a-err'),
-      });
-    },
-    [buildContext, isStreaming, language, messages, nextId, startRequestAbort, t],
+    (id: string): Promise<void> =>
+      dispatchChatContinue(
+        id,
+        { t, language, messages, isStreaming },
+        { ...setters, buildContext, startRequestAbort, nextId },
+      ),
+    [buildContext, isStreaming, language, messages, nextId, setters, startRequestAbort, t],
   );
-
-  return { messages, input, setInput, inputError, isStreaming, inputRef, handleSubmit, handleContinueMessage };
+  return {
+    messages,
+    input,
+    setInput: setters.setInput,
+    inputError,
+    isStreaming,
+    inputRef: setters.inputRef,
+    handleSubmit,
+    handleContinueMessage,
+  };
 }

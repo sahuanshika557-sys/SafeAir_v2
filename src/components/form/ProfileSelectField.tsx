@@ -22,7 +22,10 @@ export function ProfileSelectField<T extends string>({
 }: Readonly<ProfileSelectFieldProps<T>>): ReactElement {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
+      <label
+        htmlFor={id}
+        className="block text-sm font-semibold text-slate-800 dark:text-slate-200"
+      >
         {label}
       </label>
       <select

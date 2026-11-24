@@ -46,6 +46,7 @@ export function setSecurityHeaders(res: ServerApiResponse): void {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('Vary', 'Origin');
   res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
 }
 

@@ -1,7 +1,4 @@
-import {
-  MAX_CHAT_HISTORY_MESSAGES,
-  PLAN_REPAIR_SNIPPET_LENGTH,
-} from '../constants/index.js';
+import { MAX_CHAT_HISTORY_MESSAGES, PLAN_REPAIR_SNIPPET_LENGTH } from '../constants/index.js';
 import type {
   AirQualityReading,
   ChatMessage,

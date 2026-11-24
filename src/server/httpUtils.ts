@@ -1,10 +1,16 @@
 import {
+  HTTP_FORBIDDEN,
   HTTP_METHOD_NOT_ALLOWED,
   HTTP_NO_CONTENT,
   MAX_IP_LABEL_LENGTH,
 } from '../constants/index.js';
 import type { ApiErrorCategory } from '../types/index.js';
-import { sendJson, setSecurityHeaders, type ServerApiRequest, type ServerApiResponse } from './httpBody.js';
+import {
+  sendJson,
+  setSecurityHeaders,
+  type ServerApiRequest,
+  type ServerApiResponse,
+} from './httpBody.js';
 
 export {
   MAX_BODY_BYTES,
@@ -55,14 +61,60 @@ export function getClientIp(req: ServerApiRequest): string {
     : 'local';
 }
 
+function readSingleHeader(req: ServerApiRequest, name: string): string {
+  const val = req.headers?.[name];
+  const raw = Array.isArray(val) ? val[0] : val;
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+function parseOriginUrl(rawOrigin: string): URL | null {
+  try {
+    return new URL(rawOrigin);
+  } catch {
+    return null;
+  }
+}
+
+function isOriginAllowed(originUrl: URL, expectedHost: string): boolean {
+  const appUrl = process.env.APP_URL?.trim();
+  const appOrigin = appUrl ? parseOriginUrl(appUrl)?.origin : undefined;
+  if (appOrigin && originUrl.origin === appOrigin) {
+    return true;
+  }
+  return expectedHost ? originUrl.host === expectedHost : true;
+}
+
+function enforceRestrictiveCors(req: ServerApiRequest, res: ServerApiResponse): boolean {
+  const originHeader = readSingleHeader(req, 'origin');
+  if (!originHeader) {
+    return true;
+  }
+  const originUrl = parseOriginUrl(originHeader);
+  const expectedHost = readSingleHeader(req, 'x-forwarded-host') || readSingleHeader(req, 'host');
+  if (!originUrl || !isOriginAllowed(originUrl, expectedHost)) {
+    sendJson(res, HTTP_FORBIDDEN, {
+      error: 'Cross-origin API requests are not allowed.',
+      category: 'bad_request' satisfies ApiErrorCategory,
+    });
+    return false;
+  }
+  res.setHeader('Access-Control-Allow-Origin', originUrl.origin);
+  res.setHeader('Vary', 'Origin');
+  return true;
+}
+
 /**
- * Enforces allowed HTTP method (`GET` or `POST`) and responds cleanly to `OPTIONS` preflight checks.
+ * Enforces allowed HTTP method (`GET` or `POST`), restrictive same-origin CORS, and
+ * clean `OPTIONS` preflight handling.
  */
 export function enforceHttpMethod(
   req: ServerApiRequest,
   res: ServerApiResponse,
   allowedMethod: 'GET' | 'POST',
 ): boolean {
+  if (!enforceRestrictiveCors(req, res)) {
+    return false;
+  }
   const method = (req.method ?? 'GET').toUpperCase();
   if (method === 'OPTIONS') {
     res.statusCode = HTTP_NO_CONTENT;

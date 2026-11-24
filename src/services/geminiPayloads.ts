@@ -21,6 +21,7 @@ import type { SlidingWindowRateLimiter } from '../utils/rateLimiter.js';
 import { sanitizePlanScientificClaims } from '../utils/scientificFilter.js';
 import { actionPlanSchema } from '../utils/validation.js';
 
+/** Zod schema matching safe server error taxonomy categories. */
 export const apiErrorCategorySchema = z.enum([
   'missing_key',
   'invalid_key',
@@ -31,11 +32,13 @@ export const apiErrorCategorySchema = z.enum([
   'upstream_error',
 ]);
 
+/** Zod schema for structured JSON error responses returned by `/api/plan` and `/api/chat`. */
 export const apiErrorResponseSchema = z.object({
   error: z.string().optional(),
   category: z.string().optional(),
 });
 
+/** Zod schema for parsed Server-Sent Event data frames emitted by Gemini endpoints. */
 export const sseEventPayloadSchema = z.object({
   chunk: z.string().optional(),
   replacementText: z.string().optional(),
@@ -48,6 +51,7 @@ export const sseEventPayloadSchema = z.object({
   finishReason: z.string().optional(),
 });
 
+/** Zod schema for non-streaming JSON fallback responses from Gemini endpoints. */
 export const nonStreamingJsonResponseSchema = z.object({
   text: z.string().optional(),
   model: z.string().optional(),

@@ -1,11 +1,6 @@
 import { useRef, type KeyboardEvent, type ReactElement } from 'react';
 import type { TranslationDictionary } from '../../i18n/translations.js';
-import type {
-  ActionPlan,
-  AqiCategoryKey,
-  Language,
-  PlanSectionKey,
-} from '../../types/index.js';
+import type { ActionPlan, AqiCategoryKey, Language, PlanSectionKey } from '../../types/index.js';
 import {
   BreathingLungsIllustration,
   LazyIllustrationGate,
@@ -13,6 +8,7 @@ import {
 } from '../illustrations/index.js';
 import { RecommendationCard } from './RecommendationCard.js';
 
+/** Ordered keys for the four tabs in the Action Plan section. */
 export const PLAN_SECTION_ORDER: readonly PlanSectionKey[] = [
   'dailyRoutine',
   'indoorAirHacks',
@@ -69,7 +65,12 @@ function ActivePlanSectionBody({
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {plan[sectionKey].map((item, idx) => (
-          <RecommendationCard key={`${sectionKey}-${idx}-${item.title}`} item={item} language={language} t={t} />
+          <RecommendationCard
+            key={`${sectionKey}-${idx}-${item.title}`}
+            item={item}
+            language={language}
+            t={t}
+          />
         ))}
       </div>
     </div>
@@ -115,7 +116,11 @@ export function PlanTabPanel({
 
   return (
     <div>
-      <div role="tablist" aria-label={t.planTitle} className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+      <div
+        role="tablist"
+        aria-label={t.planTitle}
+        className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-3"
+      >
         {PLAN_SECTION_ORDER.map((sectionKey, idx) => {
           const isActive = activeTab === sectionKey;
           return (
@@ -132,7 +137,7 @@ export function PlanTabPanel({
               tabIndex={isActive ? 0 : -1}
               onClick={() => onSelectTab(sectionKey)}
               onKeyDown={(e) => handleTabKeyDown(e, idx)}
-              className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap shrink-0 ${
+              className={`inline-flex min-h-[44px] max-w-full items-center gap-2 rounded-lg px-4 py-2 text-left text-sm font-semibold transition-colors sm:whitespace-nowrap ${
                 isActive
                   ? 'bg-teal-800 text-white dark:bg-teal-700'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
@@ -166,8 +171,14 @@ export function PlanTabPanel({
           >
             {isActive && (
               <ActivePlanSectionBody
-                t={t} language={language} plan={plan} sectionKey={sectionKey} label={tabLabels[sectionKey]}
-                activeCategoryKey={activeCategoryKey} accentHex={accentHex} animationsPaused={animationsPaused}
+                t={t}
+                language={language}
+                plan={plan}
+                sectionKey={sectionKey}
+                label={tabLabels[sectionKey]}
+                activeCategoryKey={activeCategoryKey}
+                accentHex={accentHex}
+                animationsPaused={animationsPaused}
               />
             )}
           </div>

@@ -22,11 +22,7 @@ function pushMergedText(nodes: MarkdownInlineNode[], chunk: string): void {
   }
 }
 
-function tryConsumeBold(
-  text: string,
-  cursor: number,
-  nodes: MarkdownInlineNode[],
-): number | null {
+function tryConsumeBold(text: string, cursor: number, nodes: MarkdownInlineNode[]): number | null {
   if (!text.startsWith('**', cursor)) {
     return null;
   }

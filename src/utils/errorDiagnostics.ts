@@ -161,7 +161,8 @@ export function extractSafeErrorDiagnostics(err: unknown): SafeErrorDiagnostics 
       : record && 'code' in record
         ? record.code
         : undefined;
-  const status = typeof rawStatus === 'number' || typeof rawStatus === 'string' ? rawStatus : 'unknown';
+  const status =
+    typeof rawStatus === 'number' || typeof rawStatus === 'string' ? rawStatus : 'unknown';
 
   const rawMessage = err instanceof Error ? err.message : 'Unknown failure';
   const redacted = redactSecrets(rawMessage).slice(0, MAX_DIAGNOSTIC_MESSAGE_LENGTH);
@@ -170,13 +171,13 @@ export function extractSafeErrorDiagnostics(err: unknown): SafeErrorDiagnostics 
   return { errorType, status, message: redacted, category };
 }
 
-const LOCALIZED_ERROR_MESSAGES: Readonly<Record<Language, Readonly<Record<ApiErrorCategory, string>>>> = {
+const LOCALIZED_ERROR_MESSAGES: Readonly<
+  Record<Language, Readonly<Record<ApiErrorCategory, string>>>
+> = {
   hi: {
     missing_key: 'सर्वर पर एआई सेवा कॉन्फ़िगर नहीं है।',
-    invalid_key:
-      'एआई सेवा की एपीआई कुंजी अमान्य है या अस्वीकृत कर दी गई है। कृपया सर्वर कुंजी कॉन्फ़िगरेशन जांचें।',
-    quota_exceeded:
-      'एआई सेवा की उपयोग सीमा (कोटा) अभी समाप्त हो गई है। कृपया एक मिनट में पुनः प्रयास करें।',
+    invalid_key: 'एआई सेवा की एपीआई कुंजी अमान्य है या अस्वीकृत कर दी गई है। कृपया सर्वर कुंजी कॉन्फ़िगरेशन जांचें।',
+    quota_exceeded: 'एआई सेवा की उपयोग सीमा (कोटा) अभी समाप्त हो गई है। कृपया एक मिनट में पुनः प्रयास करें।',
     model_unavailable:
       'कॉन्फ़िगर किया गया एआई मॉडल अभी उपलब्ध या सुलभ नहीं है। कृपया कुछ क्षण बाद पुनः प्रयास करें।',
     timeout: 'एआई सेवा से उत्तर मिलने में बहुत समय लगा। कृपया पुनः प्रयास करें।',
@@ -188,7 +189,8 @@ const LOCALIZED_ERROR_MESSAGES: Readonly<Record<Language, Readonly<Record<ApiErr
     invalid_key:
       'The server AI API key is invalid or rejected. Please verify the API key configuration.',
     quota_exceeded: 'The AI quota or rate limit has been reached. Please retry in a minute.',
-    model_unavailable: 'The AI model is unavailable or not accessible for this key. Please retry shortly.',
+    model_unavailable:
+      'The AI model is unavailable or not accessible for this key. Please retry shortly.',
     timeout: 'The AI service took too long to respond. Please retry.',
     bad_request: 'The request could not be processed. Please review your details and retry.',
     upstream_error: 'The AI service is temporarily unreachable. Please retry in a moment.',

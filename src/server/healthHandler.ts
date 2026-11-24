@@ -15,7 +15,12 @@ import {
   getPrimaryGeminiModel,
   hasConfiguredGeminiKey,
 } from './geminiRunner.js';
-import { getQueryParam, sendJson, type ServerApiRequest, type ServerApiResponse } from './httpUtils.js';
+import {
+  getQueryParam,
+  sendJson,
+  type ServerApiRequest,
+  type ServerApiResponse,
+} from './httpUtils.js';
 import { consumeProbeRateLimit } from './rateLimitStore.js';
 import { runApiRoute } from './routeHelpers.js';
 
@@ -30,11 +35,7 @@ type HealthProbeCategory =
   | 'timeout'
   | 'upstream_error';
 
-function sendHealthProbeError(
-  res: ServerApiResponse,
-  modelTried: string,
-  err: unknown,
-): void {
+function sendHealthProbeError(res: ServerApiResponse, modelTried: string, err: unknown): void {
   const { category, httpStatus } = classifyUpstreamError(err);
   const diag = extractSafeErrorDiagnostics(err);
   const probeCategory: HealthProbeCategory =
@@ -58,26 +59,25 @@ function sendHealthProbeError(
   );
 }
 
+function sendProbeStatus(
+  res: ServerApiResponse,
+  modelTried: string,
+  status: number,
+  category: HealthProbeCategory,
+): void {
+  sendJson(res, status, { ok: false, modelTried, status, category }, 'no-store');
+}
+
 async function runHealthProbe(req: ServerApiRequest, res: ServerApiResponse): Promise<void> {
   const modelTried = getPrimaryGeminiModel();
   if (!consumeProbeRateLimit(req).allowed) {
-    sendJson(
-      res,
-      HTTP_TOO_MANY_REQUESTS,
-      { ok: false, modelTried, status: HTTP_TOO_MANY_REQUESTS, category: 'quota_exceeded' satisfies HealthProbeCategory },
-      'no-store',
-    );
+    sendProbeStatus(res, modelTried, HTTP_TOO_MANY_REQUESTS, 'quota_exceeded');
     return;
   }
 
   const ai = createGeminiClient();
   if (!ai) {
-    sendJson(
-      res,
-      HTTP_SERVICE_UNAVAILABLE,
-      { ok: false, modelTried, status: HTTP_SERVICE_UNAVAILABLE, category: 'missing_key' satisfies HealthProbeCategory },
-      'no-store',
-    );
+    sendProbeStatus(res, modelTried, HTTP_SERVICE_UNAVAILABLE, 'missing_key');
     return;
   }
 

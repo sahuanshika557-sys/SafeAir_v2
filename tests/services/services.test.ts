@@ -793,4 +793,116 @@ describe('Service layer (Open-Meteo + Reverse Geocode + Gemini SSE/JSON)', () =>
       }),
     ).rejects.toThrow(/took too long/i);
   });
+
+  it('covers geminiPayloads helpers, rate-limiter EN messages, and searchCities proxy failure fallbacks', async () => {
+    const {
+      consumeClientRateLimit,
+      extractHttpErrorMessage,
+      parseAndValidatePlanText,
+      resolveCategoryErrorMessage,
+    } = await import('../../src/services/geminiPayloads.js');
+    const { SlidingWindowRateLimiter } = await import('../../src/utils/rateLimiter.js');
+
+    expect(resolveCategoryErrorMessage('unknown_category', 'Safe raw fallback', 'en', 'plan')).toBe(
+      'Safe raw fallback',
+    );
+    expect(resolveCategoryErrorMessage(undefined, undefined, 'en', 'chat')).toBeNull();
+
+    const limiter = new SlidingWindowRateLimiter(1, 60_000);
+    consumeClientRateLimit(limiter, 'en', 'plan');
+    expect(() => consumeClientRateLimit(limiter, 'en', 'plan')).toThrow(/before trying again/);
+
+    const chatLimiter = new SlidingWindowRateLimiter(1, 60_000);
+    consumeClientRateLimit(chatLimiter, 'en', 'chat');
+    expect(() => consumeClientRateLimit(chatLimiter, 'en', 'chat')).toThrow(/before asking again/);
+
+    const proxyErrRes = new Response(JSON.stringify({ error: 'Upstream proxy overloaded' }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(await extractHttpErrorMessage(proxyErrRes, 'en', 'plan')).toBe(
+      'Upstream proxy overloaded',
+    );
+
+    expect(
+      parseAndValidatePlanText('{"summary":"Missing arrays"}', {
+        location: DEFAULT_LOCATION,
+        airQuality: createManualAirQualityReading(150),
+        profile: DEFAULT_PROFILE,
+        language: 'en',
+      }),
+    ).toBeNull();
+
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Primary geocode failed'))
+      .mockResolvedValueOnce(new Response('bad gateway', { status: 502 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ results: 'not-an-array' }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ results: 'not-an-array' }), { status: 200 }),
+      )
+      .mockRejectedValueOnce(new DOMException('Aborted', 'AbortError'))
+      .mockRejectedValueOnce(new Error('Network down'));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(searchCities('Pune', undefined, 'en')).rejects.toThrow();
+    await expect(searchCities('Pune', undefined, 'en')).rejects.toThrow();
+
+    const geoAbort = new AbortController();
+    geoAbort.abort();
+    await expect(searchCities('Pune', geoAbort.signal, 'en')).rejects.toThrow();
+    await expect(reverseGeocodeCoordinates(18.52, 73.85, 'en')).resolves.toBeNull();
+
+    fetchMock.mockRejectedValueOnce(new DOMException('Aborted', 'AbortError'));
+    await expect(reverseGeocodeCoordinates(22.57, 88.36, 'en')).rejects.toThrow(/Abort/);
+
+    const { readPlanOrChatResponseBody } = await import('../../src/services/geminiStream.js');
+    const invalidJsonResp = new Response(JSON.stringify({ text: 123 }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(await readPlanOrChatResponseBody(invalidJsonResp, () => {}, 'en', 'chat')).toEqual({
+      text: '',
+      truncated: false,
+    });
+
+    const jsonErrResp = new Response(JSON.stringify({ error: 'Upstream JSON error' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    await expect(readPlanOrChatResponseBody(jsonErrResp, () => {}, 'en', 'chat')).rejects.toThrow(
+      'Upstream JSON error',
+    );
+
+    const emptyTextResp = {
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      body: null,
+      text: async () => '',
+    } as unknown as Response;
+    expect(await readPlanOrChatResponseBody(emptyTextResp, () => {}, 'en', 'chat')).toEqual({
+      text: '',
+      truncated: false,
+    });
+
+    const encoder = new TextEncoder();
+    const blankSseStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data:   \n\n'));
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ chunk: 'Hi', done: true })}\n\n`),
+        );
+        controller.close();
+      },
+    });
+    const blankSseResp = new Response(blankSseStream, {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
+    });
+    expect(await readPlanOrChatResponseBody(blankSseResp, () => {}, 'en', 'chat')).toMatchObject({
+      text: 'Hi',
+    });
+  });
 });

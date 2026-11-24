@@ -27,11 +27,7 @@ export {
   setServerAiTestOverrides,
   type ServerAiTestOverrides,
 } from './geminiClient.js';
-export {
-  getGeminiModelCandidates,
-  getPrimaryGeminiModel,
-  hasConfiguredGeminiKey,
-} from './env.js';
+export { getGeminiModelCandidates, getPrimaryGeminiModel, hasConfiguredGeminiKey } from './env.js';
 
 async function sendNonStreamingPlanResponse(
   ai: Pick<GoogleGenAI, 'models'>,
@@ -184,7 +180,10 @@ export async function handleGeminiResponse(
     await executeStreamOrFallback(ai, res, options, controller.signal);
   } catch (err: unknown) {
     const { category, httpStatus } = classifyUpstreamError(err);
-    console.error(`[SafeAir Saathi] ${options.routeLabel} failed:`, { category, status: httpStatus });
+    console.error(`[SafeAir Saathi] ${options.routeLabel} failed:`, {
+      category,
+      status: httpStatus,
+    });
     sendJson(res, httpStatus, {
       error: getLocalizedApiErrorMessage(category, options.language, options.contextType),
       category,

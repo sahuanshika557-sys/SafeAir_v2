@@ -16,7 +16,8 @@ const FALLBACK_HAZARDOUS_CATEGORY: AqiCategoryInfo = AQI_CATEGORIES.at(-1) ?? {
   surfaceClass: 'bg-rose-100 dark:bg-rose-950/80',
   textClass: 'text-rose-950 dark:text-rose-100',
   borderClass: 'border-rose-400 dark:border-rose-700',
-  summaryEn: 'Emergency conditions: stay indoors with clean air filtration and monitor symptoms closely.',
+  summaryEn:
+    'Emergency conditions: stay indoors with clean air filtration and monitor symptoms closely.',
   summaryHi: 'आपातकालीन स्थिति: स्वच्छ हवा वाले कमरे में अंदर रहें और लक्षणों पर ध्यान दें।',
 };
 
@@ -57,7 +58,9 @@ export function pm25ToUsAqi(pm25: number): number {
  */
 export function getAqiCategory(aqi: number): AqiCategoryInfo {
   const normalized = Math.max(MIN_US_AQI, Math.round(Number.isFinite(aqi) ? aqi : 0));
-  return AQI_CATEGORIES.find((category) => normalized <= category.maxAqi) ?? FALLBACK_HAZARDOUS_CATEGORY;
+  return (
+    AQI_CATEGORIES.find((category) => normalized <= category.maxAqi) ?? FALLBACK_HAZARDOUS_CATEGORY
+  );
 }
 
 /**

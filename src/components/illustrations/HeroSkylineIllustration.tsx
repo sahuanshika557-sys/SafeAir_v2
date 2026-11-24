@@ -61,7 +61,13 @@ function SkylineCityscapeLayers(): ReactElement {
         <rect x="246" y="103" width="18" height="6" rx="1" fill="#ccfbf1" />
         <rect x="270" y="103" width="14" height="6" rx="1" fill="#ccfbf1" />
       </g>
-      <rect x="0" y="142" width="640" height="22" className="fill-teal-900/20 dark:fill-slate-900" />
+      <rect
+        x="0"
+        y="142"
+        width="640"
+        height="22"
+        className="fill-teal-900/20 dark:fill-slate-900"
+      />
       <g>
         <rect x="44" y="128" width="4" height="14" fill="#78350f" />
         <circle cx="46" cy="122" r="11" fill="#15803d" />
@@ -101,7 +107,10 @@ export function HeroSkylineIllustration({
   const driftSlowClass = animationsPaused ? '' : 'safeair-haze-layer-slow';
 
   return (
-    <div className={`overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 ${className}`} data-atmosphere-tier={theme.tier}>
+    <div
+      className={`overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 ${className}`}
+      data-atmosphere-tier={theme.tier}
+    >
       <svg viewBox="0 0 640 164" role="img" aria-label={ariaLabel} className="block w-full h-auto">
         <defs>
           <linearGradient id="safeair-sky-light" x1="0" y1="0" x2="0" y2="1">
@@ -114,9 +123,26 @@ export function HeroSkylineIllustration({
           </linearGradient>
         </defs>
         <rect width="640" height="164" fill="url(#safeair-sky-light)" className="dark:hidden" />
-        <rect width="640" height="164" fill="url(#safeair-sky-dark)" className="hidden dark:block" />
-        <circle cx="548" cy="40" r="18" fill={theme.tier === 'clear' ? '#f59e0b' : '#ea580c'} opacity={theme.tier === 'dense' ? 0.55 : 0.9} className="dark:hidden" />
-        <path d="M555 24a16 16 0 1 0 15 22 12 12 0 0 1-15-22z" fill="#fef3c7" opacity={theme.tier === 'dense' ? 0.6 : 0.92} className="hidden dark:block" />
+        <rect
+          width="640"
+          height="164"
+          fill="url(#safeair-sky-dark)"
+          className="hidden dark:block"
+        />
+        <circle
+          cx="548"
+          cy="40"
+          r="18"
+          fill={theme.tier === 'clear' ? '#f59e0b' : '#ea580c'}
+          opacity={theme.tier === 'dense' ? 0.55 : 0.9}
+          className="dark:hidden"
+        />
+        <path
+          d="M555 24a16 16 0 1 0 15 22 12 12 0 0 1-15-22z"
+          fill="#fef3c7"
+          opacity={theme.tier === 'dense' ? 0.6 : 0.92}
+          className="hidden dark:block"
+        />
         <SkylineCityscapeLayers />
         <g className={driftClass} opacity={theme.hazeOpacityPrimary}>
           <rect x="10" y="34" width="210" height="18" rx="9" fill={theme.hazeFill} />

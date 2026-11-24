@@ -16,7 +16,7 @@ export const RecommendationCard = memo(function RecommendationCard({
   item,
   language,
   t,
-}: RecommendationCardProps): ReactElement {
+}: Readonly<RecommendationCardProps>): ReactElement {
   const cleanedImpact = cleanImpactText(item.estimatedImpact, language);
 
   return (

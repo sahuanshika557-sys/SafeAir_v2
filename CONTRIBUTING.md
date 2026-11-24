@@ -22,18 +22,18 @@ Visit `http://localhost:3000`. Open-Meteo AQI queries and rule-based plans work 
 
 ## Project Scripts
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Starts local Express + Vite dev server on port `3000` |
-| `npm run build` | Builds frontend (`dist/`) and Node production server (`dist-server/`) |
-| `npm start` | Runs production Express server (`node dist-server/server.js --prod`) |
-| `npm run lint` | Runs strict ESLint checks across `src/`, `api/`, `tests/`, and `server.ts` |
-| `npm run lint:fix` | Auto-fixes ESLint issues |
-| `npm run typecheck` | Runs `tsc --noEmit` with strict TypeScript flags (`noUncheckedIndexedAccess`, etc.) |
-| `npm run format:check` | Checks Prettier formatting |
-| `npm test` | Runs all Vitest suites |
-| `npm run test:coverage` | Runs Vitest with enforced V8 coverage thresholds (`>=93%` overall, `>=90%` branches) |
-| `npm run check` | Runs `format:check`, `lint`, `typecheck`, `test`, and `build` |
+| Command                 | Purpose                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| `npm run dev`           | Starts local Express + Vite dev server on port `3000`                                                   |
+| `npm run build`         | Builds frontend (`dist/`) and Node production server (`dist-server/`)                                   |
+| `npm start`             | Runs production Express server (`node dist-server/server.js --prod`)                                    |
+| `npm run lint`          | Runs strict ESLint checks across `src/`, `api/`, `tests/`, and `server.ts`                              |
+| `npm run lint:fix`      | Auto-fixes ESLint issues                                                                                |
+| `npm run typecheck`     | Runs `tsc --noEmit` with strict TypeScript flags (`noUncheckedIndexedAccess`, etc.)                     |
+| `npm run format:check`  | Checks Prettier formatting                                                                              |
+| `npm test`              | Runs all Vitest suites                                                                                  |
+| `npm run test:coverage` | Runs Vitest with enforced V8 coverage thresholds (`>=94%` lines/stmts, `>=95%` funcs, `>=90%` branches) |
+| `npm run check`         | Runs `format:check`, `lint`, `typecheck`, `test`, and `build`                                           |
 
 ## Code Style & Standards
 

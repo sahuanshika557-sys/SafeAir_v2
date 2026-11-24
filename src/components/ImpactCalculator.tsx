@@ -52,7 +52,12 @@ function ImpactSummaryCards({
           aria-valuetext={`~${estimate.approxPm25ReductionPercent}%`}
           className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
         >
-          <svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true" className="block h-full w-full">
+          <svg
+            viewBox="0 0 100 10"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+            className="block h-full w-full"
+          >
             <rect
               x="0"
               y="0"
@@ -85,8 +90,8 @@ function ImpactAssumptionsPanel({
           const singlePct = Math.round(choice.approxPm25ReductionFraction * PERCENT_FULL);
           return (
             <li key={choice.id}>
-              <span className="font-semibold text-slate-900 dark:text-slate-100">{label}:</span>{' '}
-              ~{singlePct}% {language === 'hi' ? 'अनुमानित आधार PM2.5 कमी' : 'base PM2.5 drop'} ·{' '}
+              <span className="font-semibold text-slate-900 dark:text-slate-100">{label}:</span> ~
+              {singlePct}% {language === 'hi' ? 'अनुमानित आधार PM2.5 कमी' : 'base PM2.5 drop'} ·{' '}
               {desc}
             </li>
           );

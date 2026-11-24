@@ -1,6 +1,6 @@
 import type { LifestyleProfile, RecommendationItem } from '../types/index.js';
 
-export interface FallbackSectionContent {
+interface FallbackSectionContent {
   readonly bestTimeWindow: string;
   readonly worstTimeWindow: string;
   buildSummary: (placeName: string | undefined, aqi: number, categoryLabel: string) => string;
@@ -10,6 +10,7 @@ export interface FallbackSectionContent {
   buildHealthProtection: (isSevere: boolean, hasVulnerable: boolean) => RecommendationItem[];
 }
 
+/** Hindi localized rule-based safety action plan templates for fallback resilience. */
 export const FALLBACK_TEMPLATE_HI: FallbackSectionContent = {
   bestTimeWindow: 'दोपहर 1:00 बजे से शाम 4:00 बजे तक (सबसे कम स्मॉग जमाव)',
   worstTimeWindow: 'सुबह 5:30–9:30 बजे और रात 8:00–11:30 बजे (तापमान व्युत्क्रमण चरम)',
@@ -23,8 +24,7 @@ export const FALLBACK_TEMPLATE_HI: FallbackSectionContent = {
       detail: isSevere
         ? 'सुबह-सुबह बाहर व्यायाम बंद करें और इनडोर स्ट्रेचिंग करें।'
         : 'सुबह 9 बजे से पहले भारी बाहरी व्यायाम से बचें; दोपहर की धूप में हल्की सैर करें।',
-      whyItHelps:
-        'सर्दियों की ठंडी सुबह में प्रदूषक जमीन के पास फंसे रहते हैं और गहरी सांस से फेफड़ों में जाते हैं।',
+      whyItHelps: 'सर्दियों की ठंडी सुबह में प्रदूषक जमीन के पास फंसे रहते हैं और गहरी सांस से फेफड़ों में जाते हैं।',
       estimatedImpact: '25%–40% कम दैनिक PM2.5 श्वसन जोखिम',
       timeWindow: 'सुबह 6:00 – 9:30 बजे टालें',
     },
@@ -44,8 +44,7 @@ export const FALLBACK_TEMPLATE_HI: FallbackSectionContent = {
       title: 'दोपहर में सीमित क्रॉस-वेंटिलेशन करें',
       detail:
         'केवल दोपहर 1:30–3:30 बजे के बीच 15–20 मिनट खिड़कियाँ खोलें; बाकी समय दरारें गीले कपड़े या ड्राफ्ट स्टॉपर से सील रखें।',
-      whyItHelps:
-        'दिन के गर्म घंटों में बाहरी कण स्तर आमतौर पर सबसे कम होता है जिससे कमरे में ताजी हवा आती है।',
+      whyItHelps: 'दिन के गर्म घंटों में बाहरी कण स्तर आमतौर पर सबसे कम होता है जिससे कमरे में ताजी हवा आती है।',
       estimatedImpact: '20%–35% कम इनडोर धूल और स्मॉग प्रवेश',
     },
     {
@@ -73,8 +72,7 @@ export const FALLBACK_TEMPLATE_HI: FallbackSectionContent = {
     {
       title: 'कचरा और सूखे पत्ते न जलाएँ',
       detail: 'मोहल्ले में सूखे पत्तों की खाद बनाएँ और गीले-सूखे कचरे को अलग कर नगर निगम संग्रह में दें।',
-      whyItHelps:
-        'खुले में कचरा जलाने से जहरीला स्थानीय धुआँ और डाइऑक्सिन निकलते हैं जो पड़ोस को प्रभावित करते हैं।',
+      whyItHelps: 'खुले में कचरा जलाने से जहरीला स्थानीय धुआँ और डाइऑक्सिन निकलते हैं जो पड़ोस को प्रभावित करते हैं।',
       estimatedImpact: '10%–20% कम स्थानीय धुआँ और ~500 ग्राम CO₂ बचत/दिन',
     },
   ],
@@ -99,9 +97,11 @@ export const FALLBACK_TEMPLATE_HI: FallbackSectionContent = {
   ],
 };
 
+/** English localized rule-based safety action plan templates for fallback resilience. */
 export const FALLBACK_TEMPLATE_EN: FallbackSectionContent = {
   bestTimeWindow: '1:00 PM – 4:00 PM (peak vertical mixing reduces ground-level smog)',
-  worstTimeWindow: '5:30 AM – 9:30 AM & 8:00 PM – 11:30 PM (winter inversion traps exhaust near ground)',
+  worstTimeWindow:
+    '5:30 AM – 9:30 AM & 8:00 PM – 11:30 PM (winter inversion traps exhaust near ground)',
   buildSummary: (placeName, aqi, categoryLabel) => {
     const locationSuffix = placeName ? `${placeName} at ` : '';
     return `Rule-based guidance for ${locationSuffix}US AQI ${aqi} (${categoryLabel}).`;

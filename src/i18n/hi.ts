@@ -171,8 +171,7 @@ export const HI_TRANSLATIONS: TranslationDictionary = {
   chatContinuePrompt: 'कृपया पहले अधूरा रहा उत्तर दोहराए बिना संक्षेप में पूरा करें।',
   errorBoundaryBody: 'इस अनुभाग को दिखाने में समस्या आई। कृपया इस पैनल को पुनः लोड करें।',
   errorBoundaryRetry: 'पुनः प्रयास करें',
-  footerText:
-    'सेफएयर साथी · सर्दियों के स्मॉग में परिवारों की सहायता के लिए · कोई कुकीज़ या लोकेशन ट्रैकिंग नहीं।',
+  footerText: 'सेफएयर साथी · सर्दियों के स्मॉग में परिवारों की सहायता के लिए · कोई कुकीज़ या लोकेशन ट्रैकिंग नहीं।',
   animationsPauseBtn: 'एनिमेशन रोकें',
   animationsResumeBtn: 'एनिमेशन चलाएँ',
 };

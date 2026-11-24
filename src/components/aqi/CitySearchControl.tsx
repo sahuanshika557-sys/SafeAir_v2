@@ -84,7 +84,7 @@ export function CitySearchControl({
           </div>
           <button
             type="submit"
-            className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 dark:bg-teal-700 dark:hover:bg-teal-600 transition-colors whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 dark:bg-teal-700 dark:hover:bg-teal-600 transition-colors sm:whitespace-nowrap shrink-0"
           >
             {t.citySearchBtn}
           </button>
@@ -92,7 +92,7 @@ export function CitySearchControl({
             type="button"
             onClick={onRequestGeolocation}
             disabled={isLocating}
-            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-60 transition-colors whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-60 transition-colors sm:whitespace-nowrap shrink-0"
           >
             <LocateIcon className="w-4 h-4" />
             <span>{isLocating ? t.locating : t.useMyLocation}</span>

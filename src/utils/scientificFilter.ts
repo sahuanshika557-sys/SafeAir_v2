@@ -71,7 +71,10 @@ function sanitizeSentence(
  * such as houseplants purifying indoor PM2.5 or unrealistic filtration percentages, and replaces
  * flagged claims with accurate guidance in the active UI language.
  */
-export function sanitizeChatScientificClaims(text: string, language: Language): ScientificCheckResult {
+export function sanitizeChatScientificClaims(
+  text: string,
+  language: Language,
+): ScientificCheckResult {
   if (!text) {
     return { text: '', flaggedClaims: [] };
   }
@@ -82,7 +85,10 @@ export function sanitizeChatScientificClaims(text: string, language: Language): 
     .join('');
 
   return {
-    text: rewritten.replaceAll(/[ \t]{2,}/g, ' ').replaceAll(/\n{3,}/g, '\n\n').trim(),
+    text: rewritten
+      .replaceAll(/[ \t]{2,}/g, ' ')
+      .replaceAll(/\n{3,}/g, '\n\n')
+      .trim(),
     flaggedClaims: Array.from(flagged),
   };
 }
@@ -116,11 +122,23 @@ function rewriteFlaggedTitle(
   itemFlags: ReadonlySet<ScientificClaimFlag>,
   language: Language,
 ): string {
-  if (itemFlags.has('houseplant_air_purification') && /(?:plant|पौध)/i.test(title) && !/HEPA/i.test(title)) {
-    return language === 'hi' ? 'HEPA या MERV-13 DIY फ़िल्ट्रेशन अपनाएँ' : 'Use HEPA or MERV-13 DIY box-fan filtration';
+  if (
+    itemFlags.has('houseplant_air_purification') &&
+    /(?:plant|पौध)/i.test(title) &&
+    !/HEPA/i.test(title)
+  ) {
+    return language === 'hi'
+      ? 'HEPA या MERV-13 DIY फ़िल्ट्रेशन अपनाएँ'
+      : 'Use HEPA or MERV-13 DIY box-fan filtration';
   }
-  if (itemFlags.has('cloth_mask_pm25_claim') && /(?:cloth|scarf|handkerchief|कपड़|रुमाल)/i.test(title) && !/N95/i.test(title)) {
-    return language === 'hi' ? 'सही फिटिंग वाला N95/FFP2 मास्क पहनें' : 'Wear a well-fitted N95/FFP2 respirator';
+  if (
+    itemFlags.has('cloth_mask_pm25_claim') &&
+    /(?:cloth|scarf|handkerchief|कपड़|रुमाल)/i.test(title) &&
+    !/N95/i.test(title)
+  ) {
+    return language === 'hi'
+      ? 'सही फिटिंग वाला N95/FFP2 मास्क पहनें'
+      : 'Wear a well-fitted N95/FFP2 respirator';
   }
   return title;
 }
@@ -131,12 +149,22 @@ function cleanRecommendationItem(
   planFlags: Set<ScientificClaimFlag>,
 ): RecommendationItem {
   const itemFlags = new Set<ScientificClaimFlag>();
-  const title = rewriteFlaggedTitle(cleanTextField(item.title, language, planFlags, itemFlags), itemFlags, language);
+  const rawTitle = cleanTextField(item.title, language, planFlags, itemFlags);
   const detail = cleanTextField(item.detail, language, planFlags, itemFlags);
   const whyItHelps = cleanTextField(item.whyItHelps, language, planFlags, itemFlags);
   const estimatedImpact = cleanTextField(item.estimatedImpact, language, planFlags, itemFlags);
-  const timeWindow = item.timeWindow ? cleanTextField(item.timeWindow, language, planFlags, itemFlags) : undefined;
-  return { ...item, title, detail, whyItHelps, estimatedImpact, ...(timeWindow ? { timeWindow } : {}) };
+  const timeWindow = item.timeWindow
+    ? cleanTextField(item.timeWindow, language, planFlags, itemFlags)
+    : undefined;
+  const title = rewriteFlaggedTitle(rawTitle, itemFlags, language);
+  return {
+    ...item,
+    title,
+    detail,
+    whyItHelps,
+    estimatedImpact,
+    ...(timeWindow ? { timeWindow } : {}),
+  };
 }
 
 /**

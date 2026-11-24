@@ -23,7 +23,7 @@ function createMockRequest(options: {
   url: string;
   query?: Record<string, string>;
   body?: unknown;
-  headers?: Record<string, string>;
+  headers?: Record<string, string | string[]>;
   readableEnded?: boolean;
 }): ServerApiRequest {
   const req = new EventEmitter() as ServerApiRequest;
@@ -1375,5 +1375,199 @@ describe('Vercel serverless functions & shared server handlers', () => {
     await pending;
     expect(streamRes.res.statusCode).toBe(413);
     expect(streamReq.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('validates server env variables with Zod and handles unexpected errors in runApiRoute', async () => {
+    const { getServerPort, readServerEnv } = await import('../../src/server/env.js');
+    const { runApiRoute } = await import('../../src/server/routeHelpers.js');
+
+    expect(
+      readServerEnv({ PORT: '8080', APP_URL: 'https://safe-air-lilac.vercel.app' }),
+    ).toMatchObject({
+      PORT: 8080,
+      APP_URL: 'https://safe-air-lilac.vercel.app',
+    });
+    expect(() => readServerEnv({ PORT: '70000' })).toThrow(/Invalid server environment/);
+    expect(() => readServerEnv({ PORT: 'abc' })).toThrow(/Invalid server environment/);
+    expect(() => readServerEnv({ APP_URL: 'not-a-valid-url' })).toThrow(
+      /Invalid server environment/,
+    );
+    expect(() => readServerEnv({ APP_URL: 'mailto:safeair@example.invalid' })).toThrow(
+      /Invalid server environment/,
+    );
+    vi.stubEnv('PORT', '');
+    expect(getServerPort()).toBe(3000);
+    vi.stubEnv('PORT', '4500');
+    expect(getServerPort()).toBe(4500);
+    vi.unstubAllEnvs();
+
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const onError = vi.fn();
+    const res = createMockResponse();
+    await runApiRoute(
+      createMockRequest({ method: 'GET', url: '/api/health' }),
+      res.res,
+      { allowedMethod: 'GET', routeLabel: '/api/health', onError },
+      () => Promise.reject(Object.assign(new Error('ETIMEDOUT upstream stall'), { status: 504 })),
+    );
+    expect(onError).toHaveBeenCalledWith('timeout', 504);
+    errSpy.mockRestore();
+
+    // geminiStream & geminiSseEmitter edge branches
+    const {
+      generateNonStreamingWithRetry,
+      openValidatedStreamWithRetry,
+      pumpGeminiStreamToSse,
+      tryParseValidPlanJson,
+    } = await import('../../src/server/geminiStream.js');
+    expect(tryParseValidPlanJson('{"summary":"incomplete"}', 'en')).toBeNull();
+
+    const emptyRespMock = {
+      models: {
+        generateContent: vi.fn().mockResolvedValue({ text: '   ' }),
+        generateContentStream: vi.fn().mockImplementation(async () => ({
+          [Symbol.asyncIterator]: () => {
+            const chunks = [
+              { text: '', candidates: [{ finishReason: 'STOP' }] },
+              { text: 'Recovered chunk', candidates: [] },
+            ];
+            let idx = 0;
+            return {
+              next: async () =>
+                idx < chunks.length
+                  ? { value: chunks[idx++], done: false }
+                  : { value: undefined, done: true },
+            };
+          },
+        })),
+      },
+    };
+    const abortCtrl = new AbortController();
+    await expect(
+      generateNonStreamingWithRetry(emptyRespMock as never, {
+        routeLabel: '/api/chat',
+        contents: 'hi',
+        systemInstruction: 'sys',
+        signal: abortCtrl.signal,
+      }),
+    ).rejects.toThrow(/Empty response from Gemini/);
+
+    const firstStream = await openValidatedStreamWithRetry(emptyRespMock as never, {
+      routeLabel: '/api/chat',
+      contents: 'hi',
+      systemInstruction: 'sys',
+      signal: abortCtrl.signal,
+    });
+    expect(firstStream.firstChunk).toBe('Recovered chunk');
+    expect(firstStream.firstFinishReason).toBe('STOP');
+
+    // Pump stream exceeding CHAT_STREAM_FORCE_FLUSH_CHARS without punctuation then failing mid-stream
+    const longNoPunctuation = 'houseplants do not fix indoor smog '.repeat(8);
+    const sseRes = createMockResponse();
+    const errSpy2 = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy2 = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let stepCount = 0;
+    await pumpGeminiStreamToSse(
+      sseRes.res,
+      {
+        firstChunk: longNoPunctuation,
+        model: 'gemini-3.5-flash-lite',
+        iterator: {
+          next: async () => {
+            stepCount += 1;
+            if (stepCount === 1) {
+              return { value: { text: '' }, done: false };
+            }
+            if (stepCount === 2) {
+              return { value: { text: 'pending tail fragment' }, done: false };
+            }
+            throw Object.assign(new Error('Stream dropped'), { status: 503 });
+          },
+        },
+      },
+      { routeLabel: '/api/chat', contextType: 'chat', language: 'en' },
+    );
+    expect(sseRes.getBody()).toContain('pending tail fragment');
+    expect(sseRes.getBody()).toContain('model_unavailable');
+    errSpy2.mockRestore();
+    warnSpy2.mockRestore();
+
+    const { readJsonBody, sendJson } = await import('../../src/server/httpBody.js');
+    const endedRes = createMockResponse();
+    endedRes.res.end();
+    sendJson(endedRes.res, 200, { ok: true });
+    expect(endedRes.getBody()).toBe('');
+
+    const emptyEndedReq = createMockRequest({
+      method: 'POST',
+      url: '/api/chat',
+      headers: { 'content-type': ['   '] },
+    });
+    Object.defineProperty(emptyEndedReq, 'readableEnded', { value: true, configurable: true });
+    expect(await readJsonBody(emptyEndedReq)).toEqual({});
+
+    // Restrictive CORS: matching Origin + Host echoes exact Origin; untrusted or invalid Origin returns 403
+    const sameOriginRes = createMockResponse();
+    await healthHandler(
+      createMockRequest({
+        method: 'GET',
+        url: '/api/health',
+        headers: {
+          origin: 'https://safe-air-lilac.vercel.app',
+          host: 'safe-air-lilac.vercel.app',
+        },
+      }),
+      sameOriginRes.res,
+    );
+    expect(sameOriginRes.res.statusCode).toBe(200);
+    expect(sameOriginRes.headers['access-control-allow-origin']).toBe(
+      'https://safe-air-lilac.vercel.app',
+    );
+    expect(sameOriginRes.headers['vary']).toBe('Origin');
+
+    const crossOriginRes = createMockResponse();
+    await healthHandler(
+      createMockRequest({
+        method: 'GET',
+        url: '/api/health',
+        headers: {
+          origin: 'https://evil.example',
+          host: 'safe-air-lilac.vercel.app',
+        },
+      }),
+      crossOriginRes.res,
+    );
+    expect(crossOriginRes.res.statusCode).toBe(403);
+    expect(crossOriginRes.headers['access-control-allow-origin']).toBeUndefined();
+
+    const invalidOriginRes = createMockResponse();
+    await healthHandler(
+      createMockRequest({
+        method: 'GET',
+        url: '/api/health',
+        headers: {
+          origin: 'not-a-valid-origin',
+          host: 'safe-air-lilac.vercel.app',
+        },
+      }),
+      invalidOriginRes.res,
+    );
+    expect(invalidOriginRes.res.statusCode).toBe(403);
+
+    vi.stubEnv('APP_URL', 'https://preview-safeair.example');
+    const appUrlRes = createMockResponse();
+    await healthHandler(
+      createMockRequest({
+        method: 'GET',
+        url: '/api/health',
+        headers: {
+          origin: 'https://preview-safeair.example',
+          'x-forwarded-host': 'other.host',
+        },
+      }),
+      appUrlRes.res,
+    );
+    expect(appUrlRes.res.statusCode).toBe(200);
+    vi.unstubAllEnvs();
   });
 });

@@ -4,7 +4,7 @@
 
 | Script                  | Description                                                                                                    |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `npm test`              | Runs all 85 unit, service, server, component, and `jest-axe` accessibility tests across 11 suites (`jsdom`).   |
+| `npm test`              | Runs all 90 unit, service, server, integration, component, and `jest-axe` tests across 12 suites (`jsdom`).    |
 | `npm run test:coverage` | Runs the full suite and outputs V8 coverage for `api`, `src/server`, `src/utils`, `src/services`, `src/hooks`. |
 | `npm run lint`          | Runs ESLint (`typescript-eslint`, `react-hooks`, and `jsx-a11y`).                                              |
 | `npm run lint:fix`      | Auto-fixes ESLint issues (`eslint . --fix`).                                                                   |
@@ -25,3 +25,4 @@
 - `tests/services/services.test.ts` — Mocks `fetch` for Open-Meteo, `/api/reverse-geocode`, and Gemini SSE/JSON endpoints (`/api/plan`, `/api/chat`), including `replacementText`, `MAX_TOKENS` truncation metadata, abrupt stream cutoffs, abort handling, and rate limits.
 - `tests/server/apiHandlers.test.ts` — Tests all `/api/*` Vercel serverless handlers (`plan`, `chat`, `geocode`, `reverse-geocode`, `aqi`, `health?probe=1`), `GEMINI_MODEL` fallbacks, scientific filtering, and payload limits.
 - `tests/components/components.test.tsx` — Exercises `App`, `Header`, `AqiHeroCard`, `HeroSkylineIllustration`, `BreathingLungsIllustration`, `CleanAirThoughtCard`, `ProfileForm`, `ActionPlanView`, `ImpactCalculator`, `FollowUpChat` (`Continue` flow), `SafeMarkdown`, and `ErrorBoundary` with `jest-axe` accessibility checks.
+- `tests/integration/appFlows.test.tsx` — Runs full end-to-end `<App />` user flows (city search -> live AQI -> household profile -> streamed AI plan -> follow-up chat `Continue` -> light/dark `jest-axe` audits -> EN/HI toggle, plus `/api/plan` 503 fallback -> `Retry AI Plan` recovery).

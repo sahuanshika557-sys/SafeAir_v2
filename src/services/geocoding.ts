@@ -124,12 +124,19 @@ export async function reverseGeocodeCoordinates(
     return cached;
   }
 
-  const { controller, cleanup } = createLinkedTimeoutController(REVERSE_GEOCODE_TIMEOUT_MS, externalSignal);
+  const { controller, cleanup } = createLinkedTimeoutController(
+    REVERSE_GEOCODE_TIMEOUT_MS,
+    externalSignal,
+  );
   try {
     const latStr = encodeURIComponent(latitude.toFixed(COORD_PRECISION_DECIMALS));
     const lonStr = encodeURIComponent(longitude.toFixed(COORD_PRECISION_DECIMALS));
     const url = `/api/reverse-geocode?latitude=${latStr}&longitude=${lonStr}&language=${language}`;
-    const response = await fetch(url, { method: 'GET', signal: controller.signal, referrerPolicy: 'no-referrer' });
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      referrerPolicy: 'no-referrer',
+    });
     const result = response.ok ? parseReverseGeocodePayload(await response.json()) : null;
     if (result) {
       reverseGeocodeCache.set(cacheKey, result);
