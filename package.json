@@ -5,10 +5,10 @@
   "description": "Bilingual (English/Hindi) GenAI assistant for winter smog and urban air pollution with live AQI insights, tailored action plans, and impact estimates.",
   "license": "MIT",
   "author": "SafeAir Saathi Contributors",
-  "homepage": "https://safe-air-lilac.vercel.app/",
+  "homepage": "https://safe-air-v2.vercel.app/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/safeair-saathi/safeair-saathi.git"
+    "url": "https://github.com/sahuanshika557-sys/SafeAir_v2.git"
   },
   "keywords": [
     "air-quality",

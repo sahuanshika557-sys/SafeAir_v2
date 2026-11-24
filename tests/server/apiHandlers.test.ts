@@ -1382,10 +1382,10 @@ describe('Vercel serverless functions & shared server handlers', () => {
     const { runApiRoute } = await import('../../src/server/routeHelpers.js');
 
     expect(
-      readServerEnv({ PORT: '8080', APP_URL: 'https://safe-air-lilac.vercel.app' }),
+      readServerEnv({ PORT: '8080', APP_URL: 'https://safe-air-v2.vercel.app' }),
     ).toMatchObject({
       PORT: 8080,
-      APP_URL: 'https://safe-air-lilac.vercel.app',
+      APP_URL: 'https://safe-air-v2.vercel.app',
     });
     expect(() => readServerEnv({ PORT: '70000' })).toThrow(/Invalid server environment/);
     expect(() => readServerEnv({ PORT: 'abc' })).toThrow(/Invalid server environment/);
@@ -1513,15 +1513,15 @@ describe('Vercel serverless functions & shared server handlers', () => {
         method: 'GET',
         url: '/api/health',
         headers: {
-          origin: 'https://safe-air-lilac.vercel.app',
-          host: 'safe-air-lilac.vercel.app',
+          origin: 'https://safe-air-v2.vercel.app',
+          host: 'safe-air-v2.vercel.app',
         },
       }),
       sameOriginRes.res,
     );
     expect(sameOriginRes.res.statusCode).toBe(200);
     expect(sameOriginRes.headers['access-control-allow-origin']).toBe(
-      'https://safe-air-lilac.vercel.app',
+      'https://safe-air-v2.vercel.app',
     );
     expect(sameOriginRes.headers['vary']).toBe('Origin');
 
@@ -1532,7 +1532,7 @@ describe('Vercel serverless functions & shared server handlers', () => {
         url: '/api/health',
         headers: {
           origin: 'https://evil.example',
-          host: 'safe-air-lilac.vercel.app',
+          host: 'safe-air-v2.vercel.app',
         },
       }),
       crossOriginRes.res,
@@ -1547,7 +1547,7 @@ describe('Vercel serverless functions & shared server handlers', () => {
         url: '/api/health',
         headers: {
           origin: 'not-a-valid-origin',
-          host: 'safe-air-lilac.vercel.app',
+          host: 'safe-air-v2.vercel.app',
         },
       }),
       invalidOriginRes.res,

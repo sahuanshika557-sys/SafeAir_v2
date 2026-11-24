@@ -2,10 +2,10 @@
 
 **Bilingual (English / हिंदी) GenAI assistant helping families and communities navigate severe winter smog and urban air pollution with live AQI insights, tailored action plans, and transparent impact estimates.**
 
-### **[Live Demo: https://safe-air-lilac.vercel.app/](https://safe-air-lilac.vercel.app/)**
+### **[Live Demo: https://safe-air-v2.vercel.app/](https://safe-air-v2.vercel.app/)** · **[Repository: SafeAir_v2](https://github.com/sahuanshika557-sys/SafeAir_v2)**
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-safe--air--lilac.vercel.app-0f766e?style=flat-square)](https://safe-air-lilac.vercel.app/)
-[![CI](https://github.com/safeair-saathi/safeair-saathi/actions/workflows/ci.yml/badge.svg)](https://github.com/safeair-saathi/safeair-saathi/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-safe--air--v2.vercel.app-0f766e?style=flat-square)](https://safe-air-v2.vercel.app/)
+[![CI](https://github.com/sahuanshika557-sys/SafeAir_v2/actions/workflows/ci.yml/badge.svg)](https://github.com/sahuanshika557-sys/SafeAir_v2/actions/workflows/ci.yml)
 [![React](https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8_Strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-8.3-646cff?style=flat-square&logo=vite&logoColor=white)](https://vite.dev/)
@@ -265,7 +265,8 @@ SafeAir Saathi is preconfigured for Vercel via `vercel.json` (`framework: "vite"
 - `/api/aqi` (`api/aqi.ts`)
 - `/api/health` (`api/health.ts`)
 
-- **Live Deployment:** [https://safe-air-lilac.vercel.app/](https://safe-air-lilac.vercel.app/)
+- **Live Deployment:** [https://safe-air-v2.vercel.app/](https://safe-air-v2.vercel.app/)
+- **Source Repository:** [https://github.com/sahuanshika557-sys/SafeAir_v2](https://github.com/sahuanshika557-sys/SafeAir_v2)
 
 ### Option A: Vercel Dashboard
 
@@ -299,8 +300,8 @@ If `/api/plan` or `/api/chat` falls back to rule-based guidance on Vercel:
 1. **Check `/api/health` and `/api/health?probe=1` first:**
    Open `https://<your-vercel-domain>/api/health` in your browser or run:
    ```bash
-   curl https://safe-air-lilac.vercel.app/api/health
-   curl "https://safe-air-lilac.vercel.app/api/health?probe=1"
+   curl https://safe-air-v2.vercel.app/api/health
+   curl "https://safe-air-v2.vercel.app/api/health?probe=1"
    ```
    `/api/health` confirms `"ok": true` and `"keyConfigured": true`. The rate-limited `?probe=1` mode makes one tiny live Gemini call and returns `{ ok, modelTried, status, category }` (`missing_key`, `invalid_key`, `quota_exceeded`, `model_unavailable`, `timeout`, or `upstream_error`) without exposing keys or raw upstream bodies.
 2. **Verify `GEMINI_API_KEY` in Vercel Project Settings:**
